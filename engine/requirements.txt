@@ -1,0 +1,29 @@
+# DeepFind Engine — Python Dependencies
+# ──────────────────────────────────────
+# Install:
+#   cd engine
+#   python -m venv .venv
+#   .venv\Scripts\activate      (Windows)
+#   pip install -r requirements.txt
+
+# ── Core API framework ──────────────────
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+
+# ── Step 5+: Database (add when needed) ─
+# aiosqlite
+
+# ── Step 9+: Text extraction ────────────────────────────────
+pypdf==5.5.0
+python-docx==1.1.2
+
+# ── V2 Step 15+: Semantic search (add when needed) ─
+# sentence-transformers
+# faiss-cpu
+
+# ── V3 Step 18+: File watching (add when needed) ─
+# watchdog
+
+# ── V4 Step 19+: OCR (add when needed) ─
+# pytesseract
+# Pillow
