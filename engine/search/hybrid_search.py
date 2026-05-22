@@ -9,13 +9,14 @@ Calculates a final score based on match coverage across parsed query parts.
 import logging
 from datetime import datetime, timezone
 
+from search.query_parser import parse_query
 from search.filename_search import search_files as metadata_search
 from search.fulltext_search import (
     search_content,
     check_has_extracted_content,
     _human_size,
 )
-from search.query_parser import parse_query
+from search.semantic_search import search_semantic
 
 log = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ _RECENCY_DAYS = 30      # Files modified within N days get a recency boost
 
 def unified_search(
     query: str,
-    mode: str = "all",      # "all" | "metadata" | "content"
+    mode: str = "all",      # "all" | "metadata" | "content" | "semantic"
     limit: int = 50,
     offset: int = 0,
     debug: bool = False,
@@ -41,7 +42,7 @@ def unified_search(
     timing["query_parse"] = int((time.monotonic() - t0) * 1000)
 
     mode = mode.lower()
-    if mode not in ("all", "metadata", "content"):
+    if mode not in ("all", "metadata", "content", "semantic"):
         mode = "all"
 
     has_content = check_has_extracted_content()
@@ -101,6 +102,27 @@ def unified_search(
         }
         if debug: ret["parsed_query"] = parsed
         return ret
+        
+    # ── Pure semantic ────────────────────────────────────────────────────────
+    if mode == "semantic":
+        t1 = time.monotonic()
+        data = search_semantic(parsed.get("normalized", query), limit=limit, offset=offset, date_filters=parsed.get("date_filters", {}))
+        timing["semantic_search"] = int((time.monotonic() - t1) * 1000)
+        timing["total"] = int((time.monotonic() - t0) * 1000)
+        
+        no_index = data.get("no_index", False)
+        
+        ret = {
+            "total": data["total"],
+            "results": data["results"],
+            "mode": mode,
+            "has_extracted_content": has_content,
+            "no_content_warning": False,
+            "no_index": no_index,
+            "timing_ms": timing
+        }
+        if debug: ret["parsed_query"] = parsed
+        return ret
 
     # ── Hybrid (all) ─────────────────────────────────────────────────────────
     # Fetch both result sets (over-fetch to allow dedup + re-rank)
@@ -115,6 +137,12 @@ def unified_search(
     timing["content_search"] = int((time.monotonic() - t2) * 1000)
 
     t3 = time.monotonic()
+    semantic_data = {"results": [], "total": 0}
+    if parsed.get("semantic_allowed", True) or mode == "semantic":
+        semantic_data = search_semantic(parsed.get("normalized", query), limit=50, offset=0, date_filters=parsed.get("date_filters", {}))
+    timing["semantic_search"] = int((time.monotonic() - t3) * 1000)
+
+    t4 = time.monotonic()
     # Index metadata results by file id
     by_id: dict[int, dict] = {}
     for r in meta_data["results"]:
@@ -142,19 +170,37 @@ def unified_search(
         else:
             cr["match_type"] = "content"
             by_id[fid] = cr
+            
+    # Merge semantic results
+    for sr in semantic_data["results"]:
+        fid = sr["id"]
+        if fid in by_id:
+            mr = by_id[fid]
+            mr["match_type"] = "hybrid"
+            # Update snippet only if no snippet exists
+            if not mr.get("snippet") and sr.get("snippet"):
+                mr["snippet"] = sr.get("snippet")
+            mr.setdefault("matched_reasons", []).append("Semantic meaning matched your query")
+            mr["semantic_score"] = sr.get("semantic_score", 0)
+        else:
+            sr["match_type"] = "semantic"
+            by_id[fid] = sr
 
     # Calculate final scores
     for r in by_id.values():
         _calculate_score(r, parsed)
+        
+    # Filter out results with score 0 (which includes hard-filtered out items)
+    valid_results = [r for r in by_id.values() if r.get("score", 0) > 0]
 
     # Sort merged results
-    merged = sorted(by_id.values(), key=lambda r: r["score"], reverse=True)
+    merged = sorted(valid_results, key=lambda r: r["score"], reverse=True)
 
     # Apply offset + limit
     total    = len(merged)
     paginated = merged[offset : offset + limit]
     
-    timing["merge_rank"] = int((time.monotonic() - t3) * 1000)
+    timing["merge_rank"] = int((time.monotonic() - t4) * 1000)
     timing["total"] = int((time.monotonic() - t0) * 1000)
 
     ret = {
@@ -174,6 +220,7 @@ def unified_search(
 def _calculate_score(r: dict, parsed: dict) -> None:
     """
     Calculates final score using match coverage and weighted signals.
+    Applies hard filters first.
     """
     meta_terms = parsed.get("metadata_terms", [])
     ext_filters = parsed.get("extension_filters", [])
@@ -181,8 +228,12 @@ def _calculate_score(r: dict, parsed: dict) -> None:
     content_terms = parsed.get("content_terms", [])
     drive_filters = parsed.get("drive_filters", [])
     folder_filters = parsed.get("folder_filters", [])
+    date_filters = parsed.get("date_filters", {})
+    literal_terms = parsed.get("literal_terms", [])
+    search_intent = parsed.get("search_intent", "hybrid")
+    important_terms = parsed.get("important_terms", [])
     
-    total_signals_set = set(meta_terms + ext_filters + tag_terms + content_terms + drive_filters + folder_filters)
+    total_signals_set = set(meta_terms + ext_filters + tag_terms + content_terms + drive_filters + folder_filters + literal_terms)
     total_signals = len(total_signals_set)
     
     matched_meta = r.get("matched_metadata_terms", [])
@@ -192,75 +243,127 @@ def _calculate_score(r: dict, parsed: dict) -> None:
     matched_content = r.get("matched_content_terms", [])
     matched_drive = r.get("matched_drive_filters", [])
     matched_folder = r.get("matched_folder_filters", [])
+    matched_literal = r.get("matched_literal_terms", [])
     
-    matched_signals_set = set(matched_meta + matched_exts + matched_tags + matched_content + matched_drive + matched_folder)
+    matched_signals_set = set(matched_meta + matched_exts + matched_tags + matched_content + matched_drive + matched_folder + matched_literal)
     matched_signals = len(matched_signals_set)
     
-    coverage_score = (matched_signals / total_signals) if total_signals > 0 else 1.0
+    # ── Hard Filters ────────────────────────────────────────────────────────
+    
+    if search_intent == "structured":
+        if ext_filters and not matched_exts and not r.get("exact_name_match"):
+            r["score"] = 0
+            return
+            
+        if folder_filters and not matched_folder and not r.get("folder_phrase_match"):
+            r["score"] = 0
+            return
+            
+        if drive_filters and not matched_drive:
+            r["score"] = 0
+            return
+            
+        has_active_date = date_filters and any(date_filters.get(k) for k in ["modified_after", "modified_year", "created_after", "created_year", "indexed_after", "indexed_year", "modified_before", "created_before", "indexed_before"])
+        if has_active_date and not r.get("matched_date_filter"):
+            r["score"] = 0
+            return
+            
+        # Semantic only in structured search is not allowed unless it matched other things
+        if r.get("match_type") == "semantic" and matched_signals == 0:
+            r["score"] = 0
+            return
+            
+    # ── Coverage Calculation ────────────────────────────────────────────────
+    n_lower = (r.get("name") or "").lower()
+    p_lower = (r.get("path") or "").lower()
+    t_lower = (r.get("tags") or "").lower()
+    c_lower = (r.get("snippet") or "").lower()
+    
+    matched_important_list = []
+    for term in important_terms:
+        if (term in matched_meta or term in matched_content or term in matched_tags or term in matched_literal or
+            term in n_lower or term in p_lower or term in t_lower or term in c_lower):
+            matched_important_list.append(term)
+            
+    matched_important_terms_set = list(set(matched_important_list))
+    total_important = len(important_terms)
+    matched_important = len(matched_important_terms_set)
+    
+    if total_important > 0:
+        coverage_score = matched_important / total_important
+    else:
+        coverage_score = 1.0
+
+    # Minimum relevance threshold for important terms
+    if total_important >= 2 and matched_important == 0:
+        r["score"] = 0
+        return
+        
+    # Minimum relevance for semantic in generic search (prevent unrelated semantic matches)
+    if r.get("match_type") == "semantic" and total_important >= 1 and matched_important == 0:
+        r["score"] = 0
+        return
+            
+    # ── Base Scoring ────────────────────────────────────────────────────────
     
     base_score = 0
-    match_types = 0
-    
-    n = (r.get("name") or "").lower()
-    p = (r.get("path") or "").lower()
 
     if r.get("exact_name_match"):
-        base_score += 100
-        match_types += 1
-    elif matched_meta:
-        name_match = any(m in n for m in matched_meta)
-        path_match = any(m in p for m in matched_meta)
-        if name_match: 
-            base_score += 70
-            match_types += 1
-        elif path_match: 
-            base_score += 70
-            match_types += 1
-            
-    if matched_drive:
-        base_score += 100
-        match_types += 1
+        base_score += 180
+    elif r.get("exact_stem_match"):
+        base_score += 160
+    elif r.get("exact_folder_match") or r.get("folder_phrase_match"):
+        base_score += 150
         
-    if matched_folder:
-        base_score += (90 * len(matched_folder))
-        match_types += 1
-            
     if matched_exts:
-        base_score += 80
-        match_types += 1
+        base_score += 140
         
+    if r.get("matched_date_filter"):
+        base_score += 130
+        
+    if matched_meta or matched_literal:
+        for m in (matched_meta + matched_literal):
+            if f"\\{m}\\" in p_lower or f"/{m}/" in p_lower or f"/{m}\\" in p_lower or f"\\{m}/" in p_lower:
+                base_score += 100 # path token match
+            elif n_lower.startswith(m):
+                base_score += 60 # starts with
+            elif m in n_lower:
+                base_score += 40 # substring
+            elif m in p_lower:
+                base_score += 5 # weak path substring
+                
+        base_score += (120 * len(matched_literal)) # literal token matches
+
     if matched_tags:
-        base_score += 60
-        match_types += 1
+        base_score += (80 * len(matched_tags))
         
     if matched_content:
-        base_score += (60 * len(matched_content))
-        match_types += 1
+        base_score += (80 * len(matched_content))
         
-    if match_types > 1:
-        base_score += 50
+    if matched_weak_tags:
+        base_score += (5 * len(matched_weak_tags))
         
-    # Recency max +10
-    base_score += (_recency_score(r.get("modified_at")) * 10)
-    
-    # Penalize if extension filters are required but missed
-    if ext_filters and not matched_exts:
-        if meta_terms or content_terms or tag_terms:
-            base_score -= 150 # Strong penalty
+    if r.get("match_type") == "semantic":
+        sem_score = r.get("semantic_score", 0)
+        if sem_score > 0.45:
+            base_score += (sem_score * 70)
+        else:
+            base_score += (sem_score * 5) # weak semantic
             
     # Apply coverage multiplier
-    final_score = base_score * (0.5 + coverage_score)
+    final_score = base_score * (0.6 + coverage_score)
     
-    # Penalize weak single-term matches (unless they matched an exact name or extension)
-    if total_signals >= 2 and matched_signals == 1 and not matched_exts and not r.get("exact_name_match"):
-        final_score -= 40
-        
-    # If the file matches ONLY a weak tag (like "document"), apply huge penalty
-    if not matched_meta and not matched_exts and not matched_tags and not matched_content and matched_weak_tags:
-        final_score -= 100
-        
+    # Generic tag gating
+    if not matched_meta and not matched_exts and not matched_content and matched_weak_tags:
+        if search_intent == "structured":
+            final_score = 0
+        else:
+            final_score -= 100
+            
     r["score"] = round(max(0, final_score), 2)
     r["coverage_score"] = round(coverage_score, 2)
+    r["matched_important_terms"] = matched_important_terms_set
+    r["total_important_terms"] = total_important
     r["matched_signal_count"] = matched_signals
     r["total_signal_count"] = total_signals
     
@@ -268,16 +371,21 @@ def _calculate_score(r: dict, parsed: dict) -> None:
     
     if matched_drive:
         reasons.append(f"Location matched: {', '.join(matched_drive)}")
-    if matched_folder:
-        reasons.append(f"Folder matched: {', '.join(matched_folder)}")
+    if matched_folder or r.get("folder_phrase_match"):
+        reasons.append(f"Folder matched")
         
     if r.get("exact_name_match"):
         reasons.append("Filename exact match")
     elif matched_meta:
         reasons.append(f"Name/Path matched: {', '.join(matched_meta)}")
+    elif matched_literal:
+        reasons.append(f"Filename contains: {', '.join(matched_literal)}")
         
     if matched_exts:
-        reasons.append(f"File type matched: {', '.join([e.replace('.','') for e in matched_exts])}")
+        # Use registry label if available
+        from search.file_type_registry import label_for_extension
+        labels = [label_for_extension(e) for e in matched_exts]
+        reasons.append(f"File type matched: {', '.join(labels)}")
         
     if matched_tags:
         reasons.append(f"Tag matched: {', '.join(matched_tags)}")
@@ -285,15 +393,29 @@ def _calculate_score(r: dict, parsed: dict) -> None:
     if matched_content:
         reasons.append(f"Content matched: {', '.join(matched_content)}")
         
-    if total_signals > 0:
-        reasons.append(f"Matched {matched_signals}/{total_signals} important query parts")
+    if r.get("matched_date_filter"):
+        human_time = parsed.get("date_filters", {}).get("label") or "requested timeframe"
+        field_used = r.get("matched_date_filter_field")
+        fallback_used = r.get("fallback_to_modified_used")
+        
+        if field_used == "created_at":
+            reasons.append(f"Created timeframe matched: {human_time}")
+        elif field_used == "last_indexed_at":
+            reasons.append(f"Indexed timeframe matched: {human_time}")
+        else:
+            reasons.append(f"Modified timeframe matched: {human_time}")
+            
+        if fallback_used:
+            reasons.append("Created date unavailable; used modified date fallback")
+        
+    if r.get("match_type") == "semantic" and r["score"] > 0 and len(reasons) == 0:
+        reasons.append("Semantic meaning matched your query")
     
     r["matched_reasons"] = reasons
     
-    # Update match type logic so it doesn't say "Name match" if it only matched weak tags
     if r.get("match_type") == "metadata":
         if matched_meta and matched_exts:
-            r["match_type"] = "metadata_type" # Custom type for React
+            r["match_type"] = "metadata_type"
         elif not matched_meta and not matched_exts and (matched_tags or matched_weak_tags):
             r["match_type"] = "tag"
 

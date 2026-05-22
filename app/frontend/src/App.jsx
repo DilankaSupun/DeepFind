@@ -5,6 +5,9 @@ import FolderManager from './components/FolderManager/FolderManager.jsx';
 import IndexingPanel from './components/IndexingPanel/IndexingPanel.jsx';
 import ExtractionPanel from './components/ExtractionPanel/ExtractionPanel.jsx';
 import TaggingPanel from './components/TaggingPanel/TaggingPanel.jsx';
+import SemanticPanel from './components/SemanticPanel/SemanticPanel.jsx';
+import ResourceMonitor from './components/ResourceMonitor/ResourceMonitor.jsx';
+import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary.jsx';
 import HomeDashboard from './components/HomeDashboard/HomeDashboard.jsx';
 import { useEngineStatus } from './hooks/useEngineStatus.js';
 import { searchFiles } from './services/api.js';
@@ -196,6 +199,18 @@ function App() {
         {/* ── Tagging Panel (hidden during search) ── */}
         {searchState === 'idle' && (
           <TaggingPanel engineStatus={status} />
+        )}
+
+        {/* ── Semantic Panel (hidden during search) ── */}
+        {searchState === 'idle' && (
+          <SemanticPanel engineStatus={status} />
+        )}
+
+        {/* ── Resource Monitor (hidden during search) ── */}
+        {searchState === 'idle' && (
+          <ErrorBoundary>
+            <ResourceMonitor />
+          </ErrorBoundary>
         )}
 
       </main>

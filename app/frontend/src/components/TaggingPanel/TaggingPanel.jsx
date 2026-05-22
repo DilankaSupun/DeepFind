@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { startTagging, getTagStatus, getTagSummary } from '../../services/api';
+import { startTagging, getTagStatus, getTagSummary, isAbortError } from '../../services/api';
 import './TaggingPanel.css';
 
 /**
@@ -47,6 +47,7 @@ function TaggingPanel({ engineStatus }) {
         }
       }
     } catch (err) {
+      if (isAbortError(err)) return;
       console.error('Failed to get tagging status:', err);
       stopPolling();
     }
@@ -58,6 +59,7 @@ function TaggingPanel({ engineStatus }) {
       const data = await getTagSummary();
       setSummary(data);
     } catch (err) {
+      if (isAbortError(err)) return;
       console.error('Failed to fetch tagging summary:', err);
     }
   };

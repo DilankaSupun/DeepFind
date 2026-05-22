@@ -14,6 +14,17 @@ const BASE_URL = 'http://127.0.0.1:8765';
 const TIMEOUT_MS = 5000;
 
 /**
+ * Helper to identify abort or timeout errors cleanly.
+ */
+export function isAbortError(error) {
+  return (
+    error?.name === "AbortError" ||
+    error?.message?.toLowerCase().includes("aborted") ||
+    error?.message?.toLowerCase().includes("signal is aborted")
+  );
+}
+
+/**
  * Wraps fetch with a timeout using AbortController.
  * Throws if the request takes longer than TIMEOUT_MS.
  */
@@ -22,12 +33,17 @@ async function fetchWithTimeout(url, options = {}) {
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
   try {
+    const signal = options.signal ? options.signal : controller.signal;
+    if (options.signal) {
+      options.signal.addEventListener('abort', () => controller.abort());
+    }
+    
     const response = await fetch(url, { ...options, signal: controller.signal });
-    clearTimeout(timeoutId);
     return response;
   } catch (err) {
-    clearTimeout(timeoutId);
     throw err;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -123,6 +139,31 @@ export async function removeFolder(folderId) {
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return response.json();
 }
+// --- Watcher ---
+
+export async function getWatcherStatus() {
+  const res = await fetchWithTimeout(`${BASE_URL}/watcher/status`, { timeout: 3000 });
+  if (!res.ok) throw new Error("Failed to fetch watcher status");
+  return res.json();
+}
+
+export async function startWatcher() {
+  const res = await fetchWithTimeout(`${BASE_URL}/watcher/start`, { method: "POST" });
+  if (!res.ok) throw new Error("Failed to start watcher");
+  return res.json();
+}
+
+export async function stopWatcher() {
+  const res = await fetchWithTimeout(`${BASE_URL}/watcher/stop`, { method: "POST" });
+  if (!res.ok) throw new Error("Failed to stop watcher");
+  return res.json();
+}
+
+export async function reloadWatcher() {
+  const res = await fetchWithTimeout(`${BASE_URL}/watcher/reload`, { method: "POST" });
+  if (!res.ok) throw new Error("Failed to reload watcher");
+  return res.json();
+}
 
 // ── Indexing (Step 7) ──────────────────────────────────────────────────────────
 
@@ -143,6 +184,13 @@ export async function getIndexStatus() {
 /** GET /index/summary — total files in DB by status */
 export async function getIndexSummary() {
   const response = await fetchWithTimeout(`${BASE_URL}/index/summary`);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+/** GET /system/resources — get live resource usage */
+export async function getSystemResources() {
+  const response = await fetchWithTimeout(`${BASE_URL}/system/resources`);
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return response.json();
 }
@@ -262,3 +310,23 @@ export async function getDashboardSummary() {
 // Future API functions:
 // export async function getFileDetail(fileId) { ... }
 // export async function getSettings() { ... }
+
+// ── Semantic Search (Step 15) ───────────────────────────────────────────────
+
+export async function buildSemanticIndex() {
+  const response = await fetchWithTimeout(`${BASE_URL}/semantic/build-index`, { method: 'POST' });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+export async function getSemanticStatus() {
+  const response = await fetchWithTimeout(`${BASE_URL}/semantic/status`);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+export async function getSemanticSummary() {
+  const response = await fetchWithTimeout(`${BASE_URL}/semantic/summary`);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}

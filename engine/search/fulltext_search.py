@@ -47,9 +47,11 @@ def search_content(parsed: dict, limit: int = 50, offset: int = 0) -> dict:
     
     drive_filters = parsed.get("drive_filters", [])
     folder_filters = parsed.get("folder_filters", [])
+    folder_phrase_filters = parsed.get("folder_phrase_filters", [])
+    date_filters = parsed.get("date_filters", {})
 
     try:
-        return _run_fts(fts_query, orig_q, content_terms, drive_filters, folder_filters, limit, offset)
+        return _run_fts(fts_query, orig_q, content_terms, drive_filters, folder_filters, folder_phrase_filters, date_filters, limit, offset)
     except Exception as exc:
         log.warning("FTS query failed (%s), retrying with sanitized query: %s", exc, fts_query)
         # Fall back to single-token OR query
@@ -57,7 +59,7 @@ def search_content(parsed: dict, limit: int = 50, offset: int = 0) -> dict:
         if not simple:
             return {"total": 0, "results": [], "no_content": False}
         try:
-            return _run_fts(simple, orig_q, content_terms, drive_filters, folder_filters, limit, offset)
+            return _run_fts(simple, orig_q, content_terms, drive_filters, folder_filters, folder_phrase_filters, date_filters, limit, offset)
         except Exception as exc2:
             log.error("FTS fallback also failed: %s", exc2)
             return {"total": 0, "results": [], "no_content": False}
@@ -96,7 +98,7 @@ def rebuild_fts_index() -> dict:
 
 # ── Internal helpers ───────────────────────────────────────────────────────────
 
-def _run_fts(fts_query: str, original_query: str, content_terms: list, drive_filters: list, folder_filters: list, limit: int, offset: int) -> dict:
+def _run_fts(fts_query: str, original_query: str, content_terms: list, drive_filters: list, folder_filters: list, folder_phrase_filters: list, date_filters: dict, limit: int, offset: int) -> dict:
     """Execute the FTS5 query and return structured results."""
 
     drive_sql = ""
@@ -115,27 +117,83 @@ def _run_fts(fts_query: str, original_query: str, content_terms: list, drive_fil
         for f in folder_filters:
             params.append(f"%{f}%")
             f_clauses.append("f.path LIKE ?")
+            
+        for fp in folder_phrase_filters:
+            params.append(f"%{fp}%")
+            f_clauses.append("f.path LIKE ?")
+            
         folder_sql = " AND " + " AND ".join(f_clauses)
+
+    date_sql = ""
+    fallback_date_sql = ""
+    fallback_params = []
+    
+    if date_filters:
+        field = date_filters.get("field", "modified_at")
+        if field not in ["modified_at", "created_at", "last_indexed_at"]:
+            field = "modified_at"
+            
+        def _add_date_clauses(fld, pf, curr_params):
+            d_sql = ""
+            if date_filters.get(f"{pf}after"):
+                curr_params.append(date_filters[f"{pf}after"])
+                d_sql += f" AND f.{fld} >= ?"
+            if date_filters.get(f"{pf}before"):
+                curr_params.append(date_filters[f"{pf}before"])
+                d_sql += f" AND f.{fld} < ?"
+            if date_filters.get(f"{pf}year"):
+                y = date_filters[f"{pf}year"]
+                curr_params.append(f"{y}-01-01T00:00:00")
+                curr_params.append(f"{y+1}-01-01T00:00:00")
+                d_sql += f" AND f.{fld} >= ? AND f.{fld} < ?"
+            return d_sql
+            
+        if field == "created_at":
+            date_sql = _add_date_clauses("created_at", "created_", params)
+            if date_filters.get("fallback_to_modified"):
+                fallback_params = params.copy()
+                # we need to remove the created_ parameters that were just added to params
+                # Actually, wait, simpler to just rebuild params
+                fallback_params = [fts_query]
+                if drive_filters:
+                    for d in drive_filters: fallback_params.append(f"{d}%")
+                if folder_filters:
+                    for f in folder_filters: fallback_params.append(f"%{f}%")
+                if folder_phrase_filters:
+                    for fp in folder_phrase_filters: fallback_params.append(f"%{fp}%")
+                    
+                fallback_date_sql = _add_date_clauses("modified_at", "modified_", fallback_params)
+                fallback_params.extend([limit, offset])
+        elif field == "last_indexed_at":
+            date_sql = _add_date_clauses("last_indexed_at", "indexed_", params)
+        else:
+            date_sql = _add_date_clauses("modified_at", "modified_", params)
 
     params.extend([limit, offset])
 
-    sql = f"""
-        SELECT
-            f.id, f.name, f.path, f.extension, f.size, f.modified_at, f.status,
-            f.tags,
-            rank AS fts_rank,
-            snippet(files_fts, 2, '', '', '...', 40) AS snippet_text
-        FROM files_fts
-        JOIN files f ON files_fts.rowid = f.id
-        WHERE files_fts MATCH ?
-          AND f.status != 'missing'
-          {drive_sql} {folder_sql}
-        ORDER BY rank
-        LIMIT ? OFFSET ?
-    """
-
-    with get_connection() as conn:
-        rows  = conn.execute(sql, params).fetchall()
+    def _run_query(d_sql, query_params):
+        sql = f"""
+            SELECT
+                f.id, f.name, f.path, f.extension, f.size, f.modified_at, f.status,
+                f.tags,
+                rank AS fts_rank,
+                snippet(files_fts, 2, '', '', '...', 40) AS snippet_text
+            FROM files_fts
+            JOIN files f ON files_fts.rowid = f.id
+            WHERE files_fts MATCH ?
+              AND f.status != 'missing'
+              {drive_sql} {folder_sql} {d_sql}
+            ORDER BY rank
+            LIMIT ? OFFSET ?
+        """
+        with get_connection() as conn:
+            return conn.execute(sql, query_params).fetchall()
+            
+    rows = _run_query(date_sql, params)
+    fallback_used = False
+    if not rows and fallback_date_sql:
+        rows = _run_query(fallback_date_sql, fallback_params)
+        fallback_used = True
 
     total = offset + limit + 1 if len(rows) == limit else offset + len(rows)
     has_content = total > 0 or check_has_extracted_content()
@@ -170,6 +228,14 @@ def _run_fts(fts_query: str, original_query: str, content_terms: list, drive_fil
         d["matched_drive_filters"] = matched_drive
         d["matched_folder_filters"] = matched_folder
         d["matched_location"] = bool(matched_drive or matched_folder)
+        
+        d["matched_date_filter_field"] = None
+        has_active_date = date_filters and any(date_filters.get(k) for k in ["modified_after", "modified_year", "created_after", "created_year", "indexed_after", "indexed_year", "modified_before", "created_before", "indexed_before"])
+        
+        if has_active_date:
+            d["matched_date_filter_field"] = "modified_at" if fallback_used else date_filters.get("field", "modified_at")
+            d["fallback_to_modified_used"] = fallback_used
+            d["matched_date_filter"] = True
         
         # Temp score
         d["score"]          = round(score, 3)

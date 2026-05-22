@@ -38,6 +38,8 @@ function SearchBar({ onSearch, onClear, loading = false, hasResults = false, eng
       ? 'Search inside file contents…'
       : mode === 'metadata'
       ? 'Search by filename, extension, or path…'
+      : mode === 'semantic'
+      ? 'Search by conceptual meaning…'
       : 'Search files by name, content, or path…'
     : 'Start the engine to enable search';
 
@@ -125,6 +127,8 @@ function SearchBar({ onSearch, onClear, loading = false, hasResults = false, eng
           ? <>Try: <em>payment</em>, <em>database</em>, <em>function</em></>
           : mode === 'metadata'
           ? <>Try: <em>pdf</em>, <em>cv</em>, <em>.docx</em>, <em>screenshot</em></>
+          : mode === 'semantic'
+          ? <>Try: <em>data analysis script</em>, <em>payment gateway</em></>
           : <>Try: <em>payment</em>, <em>pdf</em>, <em>cv</em>, <em>database</em></>}
       </p>
     </form>
@@ -159,6 +163,15 @@ const MODES = [
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
         <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+      </svg>
+    ),
+  },
+  {
+    value: 'semantic',
+    label: 'Semantic',
+    icon: (
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2a5 5 0 0 0-5 5v2a5 5 0 0 0 10 0V7a5 5 0 0 0-5-5z" /><path d="M12 14v7" /><path d="M9 10h.01M15 10h.01" />
       </svg>
     ),
   },

@@ -173,6 +173,18 @@
   color: var(--accent-primary);
 }
 
+.sr-mode-badge--semantic {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #10b981;
+}
+
+.sr-mode-badge--hybrid {
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  color: #8b5cf6;
+}
+
 /* ── Results list ────────────────────────────────────────── */
 .sr-list {
   list-style: none;
@@ -214,9 +226,12 @@
   border-radius: 0 2px 2px 0;
 }
 
-/* Content-match cards get a subtle blue tint */
 .result-card--content {
   border-color: rgba(96, 165, 250, 0.18);
+}
+
+.result-card--semantic {
+  border-color: rgba(16, 185, 129, 0.18);
 }
 
 .result-card--hybrid {
@@ -352,6 +367,7 @@
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   font-style: italic;
 }
