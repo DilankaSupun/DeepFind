@@ -22,7 +22,7 @@ router = APIRouter(prefix="/search")
 @router.get("")
 def search(
     q:      str = Query(default="",    description="Search query"),
-    type:   str = Query(default="all", description="Search mode: all | metadata | content"),
+    type:   str = Query(default="all", description="Search mode: all | metadata | content | semantic"),
     limit:  int = Query(default=50,   ge=1, le=200),
     offset: int = Query(default=0,    ge=0),
     debug:  bool = Query(default=False, description="Include debug parsed_query"),
@@ -30,8 +30,9 @@ def search(
     """
     Search indexed file metadata and/or extracted content.
 
-    type=metadata  — filename, path, extension only (Step 8 behaviour)
-    type=content   — SQLite FTS5 full-text search over extracted_text
+    type=metadata  — filename, path, extension only
+    type=content   — SQLite FTS5 full-text search
+    type=semantic  — Local AI semantic search
     type=all       — merged hybrid search (default)
     """
     q = q.strip()
@@ -60,6 +61,7 @@ def search(
         "offset":                offset,
         "has_extracted_content": data.get("has_extracted_content", True),
         "no_content_warning":    data.get("no_content_warning", False),
+        "no_index":              data.get("no_index", False),
         "results":               data["results"],
     }
     

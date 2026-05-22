@@ -4,8 +4,10 @@ import {
   clearSearchHistory,
   getRecentModifiedFiles,
   getRecentIndexedFiles,
-  getDashboardSummary
+  getDashboardSummary,
+  isAbortError
 } from '../../services/api';
+import WatcherPanel from '../WatcherPanel/WatcherPanel';
 import './HomeDashboard.css';
 
 function HomeDashboard({ onSearchClick }) {
@@ -32,6 +34,7 @@ function HomeDashboard({ onSearchClick }) {
         setSummary(sumRes.summary || null);
         setIsOffline(false);
       } catch (error) {
+        if (isAbortError(error)) return;
         console.error("Dashboard failed to load:", error);
         setIsOffline(true);
       } finally {
@@ -203,6 +206,11 @@ function HomeDashboard({ onSearchClick }) {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Watcher Panel Row */}
+        <div className="dashboard-column" style={{ gridColumn: '1 / -1' }}>
+          <WatcherPanel />
         </div>
       </div>
     </div>

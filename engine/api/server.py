@@ -26,6 +26,9 @@ from api.routes import tags as tags_routes
 from api.routes import history as history_routes
 from api.routes import files as files_routes
 from api.routes import dashboard as dashboard_routes
+from api.routes import semantic as semantic_routes
+from api.routes import system as system_routes
+from api.routes import watcher as watcher_routes
 
 log = logging.getLogger(__name__)
 
@@ -96,6 +99,9 @@ app.include_router(tags_routes.router,     tags=["Tags"])
 app.include_router(history_routes.router,  tags=["History"])
 app.include_router(files_routes.router,    tags=["Files"])
 app.include_router(dashboard_routes.router,tags=["Dashboard"])
+app.include_router(semantic_routes.router, tags=["Semantic"])
+app.include_router(system_routes.router,   tags=["System"])
+app.include_router(watcher_routes.router,  tags=["Watcher"])
 
 # Future routers — added in later steps:
 # app.include_router(settings.router,prefix="/settings",tags=["Settings"])

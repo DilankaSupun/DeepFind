@@ -22,11 +22,11 @@ function SearchResults({
   state, results = [], total = 0, query = '',
   searchMode = 'all', limit = 50, error = null,
   noContentWarning = false, hasExtractedContent = true,
+  noIndex = false,
   onLoadMore, loadingMore = false
 }) {
   
-  // Debug log for Step 13 fix
-  console.log("Desktop API:", window.deepfind);
+  // Debug log for Step 13 fix removed
 
   if (state === 'idle') return null;
 
@@ -73,6 +73,22 @@ function SearchResults({
         </section>
       );
     }
+    
+    if (searchMode === 'semantic' && noIndex) {
+      return (
+        <section className="sr-section" aria-live="polite" aria-label="No semantic index">
+          <div className="sr-empty">
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 2C8.686 2 6 4.686 6 8c0 1.071.277 2.077.766 2.946L5 15l2 2 3.553-1.776A5.96 5.96 0 0012 18c3.314 0 6-2.686 6-6S15.314 2 12 2z" />
+            </svg>
+            <p className="sr-empty__title">Semantic search is not ready yet</p>
+            <p className="sr-empty__detail">
+              Build the Semantic Index from the Home Dashboard first.
+            </p>
+          </div>
+        </section>
+      );
+    }
 
     const contentEmptyMsg = searchMode === 'content'
       ? 'No content matches found.'
@@ -82,9 +98,11 @@ function SearchResults({
       <section className="sr-section" aria-live="polite" aria-label="No results">
         <div className="sr-empty">
           <EmptyIcon />
-          <p className="sr-empty__title">{contentEmptyMsg}</p>
+          <p className="sr-empty__title">{searchMode === 'semantic' ? 'No semantic matches found' : contentEmptyMsg}</p>
           <p className="sr-empty__detail">
-            {searchMode === 'content'
+            {searchMode === 'semantic'
+              ? <>No files semantically match <em>"{query}"</em>. Try a different concept.</>
+              : searchMode === 'content'
               ? <>No file content matches <em>"{query}"</em>. Try a shorter or different word.</>
               : <>No indexed files match <em>"{query}"</em>. Try a different term or run indexing.</>
             }
@@ -108,7 +126,9 @@ function SearchResults({
         <span className="sr-header__query">for <em>"{query}"</em></span>
         {searchMode !== 'all' && (
           <span className={`sr-mode-badge sr-mode-badge--${searchMode}`}>
-            {searchMode === 'content' ? 'Content search' : 'Name / Path'}
+            {searchMode === 'content' ? 'Content search' 
+              : searchMode === 'semantic' ? 'Semantic search' 
+              : 'Name / Path'}
           </span>
         )}
         {!showingAll && (
@@ -201,10 +221,15 @@ function ResultCard({ file }) {
 
         {/* Filename + match type badge */}
         <div className="result-card__title-row">
-          <p className="result-card__name" title={file.name}>
+          <h3 className="result-card__name" title={file.name}>
             {file.name}
-          </p>
-          <MatchTypeBadge type={matchType} />
+          </h3>
+          {file.match_type === 'metadata' && <span className="sr-mode-badge sr-mode-badge--metadata">NAME MATCH</span>}
+          {file.match_type === 'metadata_type' && <span className="sr-mode-badge sr-mode-badge--metadata">TYPE MATCH</span>}
+          {file.match_type === 'tag' && <span className="sr-mode-badge sr-mode-badge--metadata">TAG MATCH</span>}
+          {file.match_type === 'content'  && <span className="sr-mode-badge sr-mode-badge--content">CONTENT MATCH</span>}
+          {file.match_type === 'semantic' && <span className="sr-mode-badge sr-mode-badge--semantic">SEMANTIC MATCH</span>}
+          {file.match_type === 'hybrid'   && <span className="sr-mode-badge sr-mode-badge--hybrid">HYBRID MATCH</span>}
         </div>
 
         {/* Path */}

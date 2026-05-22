@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS files (
 CREATE INDEX IF NOT EXISTS idx_files_extension   ON files(extension);
 CREATE INDEX IF NOT EXISTS idx_files_status      ON files(status);
 CREATE INDEX IF NOT EXISTS idx_files_modified_at ON files(modified_at);
+CREATE INDEX IF NOT EXISTS idx_files_created_at  ON files(created_at);
 CREATE INDEX IF NOT EXISTS idx_files_name        ON files(name);
 CREATE INDEX IF NOT EXISTS idx_files_path        ON files(path);
 CREATE INDEX IF NOT EXISTS idx_files_last_indexed_at ON files(last_indexed_at);
