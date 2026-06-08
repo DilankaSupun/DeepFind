@@ -68,14 +68,18 @@ CREATE VIRTUAL TABLE IF NOT EXISTS files_fts USING fts5(
 
 -- Trigger: keep FTS in sync on INSERT
 CREATE TRIGGER IF NOT EXISTS files_ai
-AFTER INSERT ON files BEGIN
+AFTER INSERT ON files 
+WHEN new.extracted_text IS NOT NULL AND new.extracted_text != ''
+BEGIN
     INSERT INTO files_fts(rowid, name, path, extracted_text, tags)
     VALUES (new.id, new.name, new.path, new.extracted_text, new.tags);
 END;
 
 -- Trigger: keep FTS in sync on DELETE
 CREATE TRIGGER IF NOT EXISTS files_ad
-AFTER DELETE ON files BEGIN
+AFTER DELETE ON files 
+WHEN old.extracted_text IS NOT NULL AND old.extracted_text != ''
+BEGIN
     INSERT INTO files_fts(files_fts, rowid, name, path, extracted_text, tags)
     VALUES ('delete', old.id, old.name, old.path, old.extracted_text, old.tags);
 END;
@@ -83,10 +87,15 @@ END;
 -- Trigger: keep FTS in sync on UPDATE
 CREATE TRIGGER IF NOT EXISTS files_au
 AFTER UPDATE ON files BEGIN
+    -- Delete the old row if it existed in FTS
     INSERT INTO files_fts(files_fts, rowid, name, path, extracted_text, tags)
-    VALUES ('delete', old.id, old.name, old.path, old.extracted_text, old.tags);
+    SELECT 'delete', old.id, old.name, old.path, old.extracted_text, old.tags
+    WHERE old.extracted_text IS NOT NULL AND old.extracted_text != '';
+    
+    -- Insert the new row if it has content
     INSERT INTO files_fts(rowid, name, path, extracted_text, tags)
-    VALUES (new.id, new.name, new.path, new.extracted_text, new.tags);
+    SELECT new.id, new.name, new.path, new.extracted_text, new.tags
+    WHERE new.extracted_text IS NOT NULL AND new.extracted_text != '';
 END;
 
 
@@ -151,3 +160,26 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
     ('semantic_search_enabled',  'false'),
     ('theme',                    'dark'),
     ('result_limit',             '50');
+
+
+-- ── 8. scan_scope ──────────────────────────────────────────────────────────────
+-- User-managed scan rules: exclusions and custom includes.
+-- System exclusions (Windows/, Program Files/, etc.) are seeded
+-- automatically on first run and re-seeded after a full reset.
+--
+-- scan_mode:   'exclude' | 'include'
+-- source_type: 'system'  | 'user'  | 'custom_include'
+
+CREATE TABLE IF NOT EXISTS scan_scope (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    path        TEXT    UNIQUE NOT NULL,   -- Absolute path, forward slashes, no trailing slash
+    scan_mode   TEXT    NOT NULL,          -- 'exclude' | 'include'
+    source_type TEXT    DEFAULT 'user',    -- 'system' | 'user' | 'custom_include'
+    is_enabled  INTEGER DEFAULT 1,         -- 1 = active rule, 0 = disabled
+    added_at    TEXT                       -- ISO-8601 UTC
+);
+
+CREATE INDEX IF NOT EXISTS idx_scan_scope_scan_mode  ON scan_scope(scan_mode);
+CREATE INDEX IF NOT EXISTS idx_scan_scope_is_enabled ON scan_scope(is_enabled);
+
+

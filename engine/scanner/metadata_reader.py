@@ -13,6 +13,8 @@ from pathlib import Path
 log = logging.getLogger(__name__)
 
 
+from scanner.path_utils import normalize_path
+
 def read_metadata(path: Path) -> dict | None:
     """
     Read file metadata via stat(). Returns None on any error.
@@ -24,7 +26,7 @@ def read_metadata(path: Path) -> dict | None:
         stat = path.stat()
         # On Windows st_ctime is creation time; on Linux it's metadata-change time
         return {
-            "path":        path.as_posix(),
+            "path":        normalize_path(path.as_posix()),
             "name":        path.name,
             "extension":   path.suffix.lower() if path.suffix else None,
             "size":        stat.st_size,

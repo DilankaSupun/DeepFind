@@ -88,6 +88,8 @@ def rebuild_fts_index() -> dict:
             SELECT id, name, path, extracted_text, tags
             FROM files
             WHERE status != 'missing'
+              AND extracted_text IS NOT NULL
+              AND extracted_text != ''
         """)
         count = conn.execute("SELECT COUNT(*) AS n FROM files_fts").fetchone()["n"]
 
@@ -182,6 +184,8 @@ def _run_fts(fts_query: str, original_query: str, content_terms: list, drive_fil
             JOIN files f ON files_fts.rowid = f.id
             WHERE files_fts MATCH ?
               AND f.status != 'missing'
+              AND f.extracted_text IS NOT NULL
+              AND f.extracted_text != ''
               {drive_sql} {folder_sql} {d_sql}
             ORDER BY rank
             LIMIT ? OFFSET ?
@@ -250,6 +254,7 @@ def _run_fts(fts_query: str, original_query: str, content_terms: list, drive_fil
 def _build_fts_query(terms: list) -> str:
     """
     Convert a list of terms into a safe FTS5 query using OR.
+    Restricts search exclusively to the extracted_text column.
     """
     safe_terms = []
     for term in terms:
@@ -261,7 +266,8 @@ def _build_fts_query(terms: list) -> str:
     if not safe_terms:
         return '""'
         
-    return " OR ".join(safe_terms)
+    query_body = " OR ".join(safe_terms)
+    return f"extracted_text : ({query_body})"
 
 
 def _sanitize_fts(terms: list) -> str:
@@ -271,7 +277,7 @@ def _sanitize_fts(terms: list) -> str:
     for term in terms:
         alpha = re.sub(r'[^a-zA-Z0-9]', '', term)
         if alpha:
-            return f'"{alpha}"*'
+            return f'extracted_text : "{alpha}"*'
     return '""'
 
 

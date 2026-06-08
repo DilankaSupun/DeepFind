@@ -1,11 +1,11 @@
 """
 DeepFind Engine — FastAPI Application
 
-Step 6: Added /folders endpoints for folder selection.
-Step 9: Added /extract endpoints for text content extraction.
+Step 6:  Added /folders endpoints for folder selection.
+Step 9:  Added /extract endpoints for text content extraction.
+Step 19: Added /scan-scope endpoints for automatic scan + exclusion manager.
 
 Future steps will add routers for:
-  - FTS5 search       (Step 10+)
   - Semantic AI       (Step 15+ / V2)
 """
 
@@ -29,6 +29,8 @@ from api.routes import dashboard as dashboard_routes
 from api.routes import semantic as semantic_routes
 from api.routes import system as system_routes
 from api.routes import watcher as watcher_routes
+from api.routes import reset as reset_routes
+from api.routes import scan_scope as scan_scope_routes
 
 log = logging.getLogger(__name__)
 
@@ -89,19 +91,21 @@ app.add_middleware(
 
 # ── Register Routers ───────────────────────────────────────────────────────────
 
-app.include_router(health.router,          tags=["Health"])
-app.include_router(db_routes.router,       tags=["Database"])
-app.include_router(folders_routes.router,  tags=["Folders"])
-app.include_router(index_routes.router,    tags=["Indexing"])
-app.include_router(search_routes.router,   tags=["Search"])
-app.include_router(extract_routes.router,  tags=["Extraction"])
-app.include_router(tags_routes.router,     tags=["Tags"])
-app.include_router(history_routes.router,  tags=["History"])
-app.include_router(files_routes.router,    tags=["Files"])
-app.include_router(dashboard_routes.router,tags=["Dashboard"])
-app.include_router(semantic_routes.router, tags=["Semantic"])
-app.include_router(system_routes.router,   tags=["System"])
-app.include_router(watcher_routes.router,  tags=["Watcher"])
+app.include_router(health.router,             tags=["Health"])
+app.include_router(db_routes.router,          tags=["Database"])
+app.include_router(folders_routes.router,     tags=["Folders"])
+app.include_router(index_routes.router,       tags=["Indexing"])
+app.include_router(search_routes.router,      tags=["Search"])
+app.include_router(extract_routes.router,     tags=["Extraction"])
+app.include_router(tags_routes.router,        tags=["Tags"])
+app.include_router(history_routes.router,     tags=["History"])
+app.include_router(files_routes.router,       tags=["Files"])
+app.include_router(dashboard_routes.router,   tags=["Dashboard"])
+app.include_router(semantic_routes.router,    tags=["Semantic"])
+app.include_router(system_routes.router,      tags=["System"])
+app.include_router(watcher_routes.router,     tags=["Watcher"])
+app.include_router(reset_routes.router,       tags=["Reset"])
+app.include_router(scan_scope_routes.router,  tags=["ScanScope"])
 
 # Future routers — added in later steps:
 # app.include_router(settings.router,prefix="/settings",tags=["Settings"])

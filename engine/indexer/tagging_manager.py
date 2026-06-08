@@ -98,8 +98,10 @@ def _run(force: bool) -> None:
 def _do_tagging(force: bool) -> None:
     from database.repositories import FilesRepository
     from ai.tag_generator import generate_tags
+    from scanner.scan_scope_utils import filter_allowed_files
 
-    candidates = FilesRepository.get_files_for_tagging(force=force)
+    raw_candidates = FilesRepository.get_files_for_tagging(force=force)
+    candidates = filter_allowed_files(raw_candidates, path_key="path")
 
     if not candidates:
         log.info("No files eligible for tagging")

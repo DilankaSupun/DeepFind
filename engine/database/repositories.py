@@ -326,9 +326,11 @@ class FilesRepository:
         For each active folder, find DB files that were NOT seen during the scan.
         Sets their status = 'missing'. Returns total count marked.
         """
+        from scanner.path_utils import normalize_path
+        
         total = 0
         for folder_path in folder_paths:
-            prefix = folder_path.rstrip("/") + "/"
+            prefix = normalize_path(folder_path).rstrip("/") + "/"
             with get_connection() as conn:
                 rows = conn.execute(
                     "SELECT id, path FROM files WHERE path LIKE ? AND status != 'missing'",
@@ -612,3 +614,175 @@ def get_dashboard_summary() -> dict:
         "files_with_tags": files_with_tags,
         "recent_searches": recent_searches
     }
+
+
+# ── Scan Scope ─────────────────────────────────────────────────────────────────
+
+class ScanScopeRepository:
+    """
+    Manages user-defined and system scan rules in the scan_scope table.
+
+    scan_mode values:
+      'exclude'        — path is skipped by scanner and watcher
+
+    source_type values:
+      'system'         — seeded automatically (C:/Windows etc.)
+      'user'           — added by the user via UI
+    """
+
+    @staticmethod
+    def get_effective_scan_roots() -> list[str]:
+        """
+        Returns all automatically discovered local drives and user folders that
+        are allowed for scanning. If none exist (e.g. first run), it auto-initializes.
+        """
+        from database.repositories import FoldersRepository
+        
+        folders = FoldersRepository.list_folders(active_only=True)
+        roots = [f["folder_path"] for f in folders]
+        
+        if not roots:
+            # Fallback 2: auto-initialize default scope
+            import logging
+            logging.getLogger(__name__).info("Scan roots empty. Auto-initializing default scope.")
+            try:
+                from api.routes.scan_scope import initialize_scan_scope
+                initialize_scan_scope()
+                # Fetch again
+                folders = FoldersRepository.list_folders(active_only=True)
+                roots = [f["folder_path"] for f in folders]
+            except Exception as e:
+                logging.getLogger(__name__).error("Failed to auto-initialize scan scope: %s", e)
+                
+        return roots
+
+    @staticmethod
+    def _normalize(path: str) -> str:
+        """Normalize path using path_utils for global DB consistency."""
+        from scanner.path_utils import normalize_path
+        return normalize_path(path)
+
+    @staticmethod
+    def get_all() -> list[dict]:
+        """Return all scan scope rules."""
+        with get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM scan_scope ORDER BY scan_mode, source_type, path"
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    def get_exclusions() -> list[dict]:
+        """Return enabled exclusion rules only."""
+        with get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM scan_scope WHERE scan_mode = 'exclude' AND is_enabled = 1 "
+                "ORDER BY source_type, path"
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    def get_includes() -> list[dict]:
+        """Return enabled custom-include rules only."""
+        with get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM scan_scope WHERE scan_mode = 'include' AND is_enabled = 1 "
+                "ORDER BY path"
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    @staticmethod
+    def get_system_exclusions() -> list[dict]:
+        """Return system-seeded exclusion rules only."""
+        with get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM scan_scope "
+                "WHERE scan_mode = 'exclude' AND source_type = 'system' "
+                "ORDER BY path"
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    @classmethod
+    def add_rule(
+        cls,
+        path: str,
+        scan_mode: str,
+        source_type: str = "user",
+    ) -> dict:
+        """
+        Insert a new scan scope rule. Idempotent — updating is_enabled if it already exists.
+        Returns the full row after insert/update.
+        """
+        normalized = cls._normalize(path)
+        now = _now_iso()
+        with get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO scan_scope (path, scan_mode, source_type, is_enabled, added_at)
+                VALUES (?, ?, ?, 1, ?)
+                ON CONFLICT(path) DO UPDATE SET
+                    scan_mode   = excluded.scan_mode,
+                    source_type = excluded.source_type,
+                    is_enabled  = 1,
+                    added_at    = excluded.added_at
+                """,
+                (normalized, scan_mode, source_type, now),
+            )
+            row = conn.execute(
+                "SELECT * FROM scan_scope WHERE path = ?", (normalized,)
+            ).fetchone()
+        return dict(row) if row else {}
+
+    @staticmethod
+    def remove_rule(rule_id: int) -> bool:
+        """
+        Hard-delete a rule by ID.
+        System exclusions should generally not be removed via this method.
+        Returns True if a row was actually deleted.
+        """
+        with get_connection() as conn:
+            cursor = conn.execute(
+                "DELETE FROM scan_scope WHERE id = ?", (rule_id,)
+            )
+        return cursor.rowcount > 0
+
+    @classmethod
+    def initialize_system_exclusions(cls) -> int:
+        """
+        Seed the built-in system exclusions from config.SYSTEM_EXCLUDED_PATHS.
+        Idempotent: uses INSERT OR IGNORE via add_rule's ON CONFLICT handling.
+        Returns count of rules seeded.
+        """
+        from config import SYSTEM_EXCLUDED_PATHS
+        seeded = 0
+        for path in SYSTEM_EXCLUDED_PATHS:
+            cls.add_rule(path, scan_mode="exclude", source_type="system")
+            seeded += 1
+        return seeded
+
+    @classmethod
+    def clear_user_rules(cls) -> None:
+        """Delete all user-added rules (source_type != 'system'). Called on full reset."""
+        with get_connection() as conn:
+            conn.execute(
+                "DELETE FROM scan_scope WHERE source_type != 'system'"
+            )
+
+    @classmethod
+    def clear_all(cls) -> None:
+        """Delete ALL rules including system ones. Used before re-seeding on full reset."""
+        with get_connection() as conn:
+            conn.execute("DELETE FROM scan_scope")
+
+    @staticmethod
+    def get_excluded_path_strings() -> set[str]:
+        """
+        Return a plain set of excluded path strings (normalized, forward slashes).
+        Used by scanner and watcher for fast prefix checking.
+        """
+        with get_connection() as conn:
+            rows = conn.execute(
+                "SELECT path FROM scan_scope WHERE scan_mode = 'exclude' AND is_enabled = 1"
+            ).fetchall()
+        return {row["path"] for row in rows}
+

@@ -30,7 +30,8 @@ export function isAbortError(error) {
  */
 async function fetchWithTimeout(url, options = {}) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timeoutLimit = options.timeout || TIMEOUT_MS;
+  const timeoutId = setTimeout(() => controller.abort(), timeoutLimit);
 
   try {
     const signal = options.signal ? options.signal : controller.signal;
@@ -68,7 +69,7 @@ export async function checkHealth() {
   return response.json();
 }
 
-// ── Folder Management (Step 6) ─────────────────────────────────────────────────
+// ── Folder Management (Step 6 / 19) ─────────────────────────────────────────────────
 
 /**
  * GET /folders/discover
@@ -76,18 +77,6 @@ export async function checkHealth() {
  */
 export async function discoverFolders() {
   const response = await fetchWithTimeout(`${BASE_URL}/folders/discover`);
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return response.json();
-}
-
-/**
- * POST /folders/initialize-defaults
- * Saves all detected folders/drives to the DB with their default active states.
- */
-export async function initializeDefaults() {
-  const response = await fetchWithTimeout(`${BASE_URL}/folders/initialize-defaults`, {
-    method: 'POST',
-  });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return response.json();
 }
@@ -139,6 +128,43 @@ export async function removeFolder(folderId) {
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return response.json();
 }
+
+// ── Scan Scope (Step 19) ──────────────────────────────────────────────────────
+
+export async function getScanScopeStatus() {
+  const response = await fetchWithTimeout(`${BASE_URL}/scan-scope/status`);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+export async function initializeScanScope() {
+  const response = await fetchWithTimeout(`${BASE_URL}/scan-scope/initialize`, { method: 'POST' });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+export async function addExcludedPath(path) {
+  const response = await fetchWithTimeout(`${BASE_URL}/scan-scope/exclude`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path }),
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+export async function removeExcludedPath(id) {
+  const response = await fetchWithTimeout(`${BASE_URL}/scan-scope/exclude/${id}`, { method: 'DELETE' });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+export async function reloadScanScope() {
+  const response = await fetchWithTimeout(`${BASE_URL}/scan-scope/reload`, { method: 'POST' });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
 // --- Watcher ---
 
 export async function getWatcherStatus() {
@@ -163,6 +189,26 @@ export async function reloadWatcher() {
   const res = await fetchWithTimeout(`${BASE_URL}/watcher/reload`, { method: "POST" });
   if (!res.ok) throw new Error("Failed to reload watcher");
   return res.json();
+}
+
+// ── Reset App Data (Step 19) ───────────────────────────────────────────────────
+
+export async function getResetPreview() {
+  const response = await fetchWithTimeout(`${BASE_URL}/reset/preview`);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+export async function clearSearchIndex() {
+  const response = await fetchWithTimeout(`${BASE_URL}/reset/index`, { method: 'POST', timeout: 60000 });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+export async function resetAppData() {
+  const response = await fetchWithTimeout(`${BASE_URL}/reset/app-data`, { method: 'POST', timeout: 60000 });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
 }
 
 // ── Indexing (Step 7) ──────────────────────────────────────────────────────────

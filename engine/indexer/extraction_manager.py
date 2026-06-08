@@ -102,9 +102,13 @@ def _run() -> None:
 def _do_extract() -> None:
     from database.repositories import FilesRepository, ChunksRepository
     from extractors.extractor_dispatcher import extract_file, chunk_text
+    from scanner.scan_scope_utils import filter_allowed_files
 
     # Fetch all eligible files in one query (avoids holding connection open)
-    candidates = FilesRepository.get_files_for_extraction(SUPPORTED_TEXT_EXTENSIONS)
+    raw_candidates = FilesRepository.get_files_for_extraction(SUPPORTED_TEXT_EXTENSIONS)
+    
+    # Apply scan scope exclusions
+    candidates = filter_allowed_files(raw_candidates, path_key="path")
 
     if not candidates:
         log.info("No files eligible for text extraction")

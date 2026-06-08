@@ -1,0 +1,318 @@
+/* ── Scan Scope Panel ─────────────────────────────────────────── */
+
+.scan-scope-panel {
+  width: 100%;
+  max-width: 820px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeInUp 0.5s ease 0.55s both;
+  flex-shrink: 0;
+}
+
+/* Header */
+.scan-scope__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.scan-scope__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+
+.scan-scope__title {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.scan-scope__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+}
+
+.status-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ef4444;
+}
+
+.status-indicator--active {
+  background: #4ade80;
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
+}
+
+/* Buttons */
+.ss-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius-lg);
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all var(--transition-fast);
+}
+
+.ss-btn--primary {
+  background: var(--gradient-primary);
+  color: #fff;
+}
+
+.ss-btn--primary:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+
+.ss-btn--ghost {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-medium);
+  color: var(--text-secondary);
+}
+
+.ss-btn--ghost:hover:not(:disabled) {
+  background: var(--bg-glass-hover);
+  border-color: rgba(99,102,241,0.3);
+  color: var(--text-primary);
+}
+
+.ss-btn--small {
+  padding: 4px 10px;
+  font-size: 11px;
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+}
+
+.ss-btn--small:hover:not(:disabled) {
+  background: rgba(99,102,241,0.1);
+  border-color: rgba(99,102,241,0.3);
+  color: var(--accent-primary);
+}
+
+.ss-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+/* Spinner */
+.ss-spinner {
+  display: inline-block;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.25);
+  border-top-color: currentColor;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+/* Error */
+.scan-scope__error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.2);
+  border-radius: var(--radius-lg);
+  font-size: 12.5px;
+  color: #f87171;
+}
+.scan-scope__error span { flex: 1; }
+.scan-scope__error-close {
+  background: none; border: none; color: #f87171;
+  cursor: pointer; font-size: 16px; opacity: 0.7;
+  transition: opacity var(--transition-fast);
+}
+.scan-scope__error-close:hover { opacity: 1; }
+
+/* Offline / loading / init */
+.scan-scope__offline,
+.scan-scope__loading,
+.scan-scope__init {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 30px;
+  background: var(--bg-glass);
+  border: 1px dashed var(--border-medium);
+  border-radius: var(--radius-lg);
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.scan-scope__offline {
+  flex-direction: row;
+  border-style: solid;
+  padding: 18px;
+}
+
+/* Content Layout */
+.scan-scope__content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.scan-scope__description {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.scan-scope__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+
+.scan-scope__section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.scan-scope__section-subtitle {
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* Lists */
+.ss-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ss-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  transition: all var(--transition-fast);
+}
+
+.ss-item:hover {
+  background: var(--bg-glass-hover);
+  border-color: var(--border-subtle);
+}
+
+.ss-item--inactive {
+  opacity: 0.6;
+}
+
+.ss-item--excluded {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.ss-item--system {
+  opacity: 0.5;
+  font-size: 11px;
+}
+
+.ss-item--empty {
+  color: var(--text-muted);
+  font-style: italic;
+  font-family: var(--font-sans);
+  background: transparent;
+}
+
+.ss-badge {
+  font-family: var(--font-sans);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  margin-left: auto;
+}
+
+.ss-badge--custom {
+  background: rgba(99,102,241,0.1);
+  color: var(--accent-primary);
+}
+
+.ss-badge--user {
+  background: rgba(239,68,68,0.1);
+  color: #ef4444;
+}
+
+.ss-badge--system {
+  background: var(--bg-glass);
+  color: var(--text-muted);
+}
+
+.ss-item__remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  margin-left: auto;
+}
+
+.ss-item__remove:hover:not(:disabled) {
+  background: rgba(239,68,68,0.1);
+  color: #ef4444;
+}
+
+.ss-item__remove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.scan-scope__actions {
+  margin-top: 4px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Details summary */
+.scan-scope__details {
+  cursor: pointer;
+}
+.scan-scope__details summary {
+  outline: none;
+}
+.scan-scope__details .ss-list {
+  margin-top: 12px;
+}

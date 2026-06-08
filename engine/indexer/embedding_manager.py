@@ -114,7 +114,7 @@ def _embed_worker():
             # Must ensure chunk_text is not empty or too small (handled loosely here by skipping empty)
             with get_connection() as conn:
                 rows = conn.execute(f"""
-                    SELECT c.id, c.file_id, c.chunk_text 
+                    SELECT c.id, c.file_id, c.chunk_text, f.path as file_path
                     FROM file_chunks c
                     JOIN files f ON c.file_id = f.id
                     WHERE c.vector_id IS NULL
@@ -128,11 +128,24 @@ def _embed_worker():
                 log.info("No more chunks require embedding.")
                 break
                 
+            from scanner.scan_scope_utils import is_path_allowed
+            from database.repositories import ScanScopeRepository
+            exclusions = ScanScopeRepository.get_excluded_path_strings()
+            roots = ScanScopeRepository.get_effective_scan_roots()
+
             batch_texts = []
             valid_rows = []
             
             for row in rows:
                 _state.chunks_checked += 1
+                
+                # Check scan scope exclusion
+                if not is_path_allowed(row["file_path"], exclusions, roots):
+                    _state.chunks_skipped += 1
+                    with get_connection() as conn:
+                        conn.execute("UPDATE file_chunks SET vector_id = -1 WHERE id = ?", (row["id"],))
+                    continue
+
                 text = row["chunk_text"].strip()
                 
                 # Very loose filter for tiny chunks

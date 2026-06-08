@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import SearchBar from './components/SearchBar/SearchBar.jsx';
 import SearchResults from './components/SearchResults/SearchResults.jsx';
-import FolderManager from './components/FolderManager/FolderManager.jsx';
+import ScanScopePanel from './components/ScanScopePanel/ScanScopePanel.jsx';
 import IndexingPanel from './components/IndexingPanel/IndexingPanel.jsx';
 import ExtractionPanel from './components/ExtractionPanel/ExtractionPanel.jsx';
 import TaggingPanel from './components/TaggingPanel/TaggingPanel.jsx';
@@ -9,6 +9,7 @@ import SemanticPanel from './components/SemanticPanel/SemanticPanel.jsx';
 import ResourceMonitor from './components/ResourceMonitor/ResourceMonitor.jsx';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary.jsx';
 import HomeDashboard from './components/HomeDashboard/HomeDashboard.jsx';
+import ResetPanel from './components/ResetPanel/ResetPanel.jsx';
 import { useEngineStatus } from './hooks/useEngineStatus.js';
 import { searchFiles } from './services/api.js';
 import './styles/App.css';
@@ -181,9 +182,9 @@ function App() {
           <HomeDashboard onSearchClick={handleSearch} />
         )}
 
-        {/* ── Folder Manager (hidden during search) ── */}
+        {/* ── Scan Scope Panel (hidden during search) ── */}
         {searchState === 'idle' && (
-          <FolderManager engineStatus={status} />
+          <ScanScopePanel engineStatus={status} />
         )}
 
         {/* ── Indexing Panel (hidden during search) ── */}
@@ -210,6 +211,13 @@ function App() {
         {searchState === 'idle' && (
           <ErrorBoundary>
             <ResourceMonitor />
+          </ErrorBoundary>
+        )}
+
+        {/* ── Reset Panel (hidden during search) ── */}
+        {searchState === 'idle' && (
+          <ErrorBoundary>
+            <ResetPanel onResetSuccess={handleClear} />
           </ErrorBoundary>
         )}
 

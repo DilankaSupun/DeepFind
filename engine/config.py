@@ -59,9 +59,64 @@ SUPPORTED_TEXT_EXTENSIONS = {
     ".pdf", ".docx",
 }
 
-# Directories to always skip during scanning
+# Directories to always skip during scanning (matched by directory NAME, not path)
 SKIP_DIRECTORIES = {
-    "node_modules", ".git", "__pycache__", ".venv", "venv",
-    ".idea", ".vscode", "dist", "build", ".next", "out",
-    "$RECYCLE.BIN", "System Volume Information",
+    # Windows system directories (name match)
+    "Windows",
+    "Program Files",
+    "Program Files (x86)",
+    "ProgramData",
+    "AppData",
+    "Recovery",
+    "System Volume Information",
+    "$RECYCLE.BIN",
+    "$SysReset",
+    "$Windows.~BT",
+    "$Windows.~WS",
+    # Dev / virtual environments
+    "node_modules",
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".tox",
+    ".eggs",
+    # Build artifacts
+    "dist",
+    "build",
+    ".next",
+    "out",
+    ".nuxt",
+    # Temp / cache
+    "Temp",
+    "tmp",
+    "temp",
+    "cache",
+    ".cache",
+    # macOS
+    ".DS_Store",
+    ".Spotlight-V100",
+    ".Trashes",
 }
+
+# ── Scan Scope defaults ────────────────────────────────────────────────────────
+#
+# Automatic scanning is ON by default.
+# Full drives are not auto-scanned — only common user folders are.
+AUTO_SCAN_ENABLED = True
+
+# System-level path exclusions (matched by path prefix, not just directory name).
+# These are seeded into the scan_scope table on first run and after full reset.
+# Paths use forward slashes. Drive letter is uppercase.
+SYSTEM_EXCLUDED_PATHS: list[str] = [
+    "C:/Windows",
+    "C:/Program Files",
+    "C:/Program Files (x86)",
+    "C:/ProgramData",
+    "C:/Recovery",
+    "C:/System Volume Information",
+    "C:/$RECYCLE.BIN",
+]
+

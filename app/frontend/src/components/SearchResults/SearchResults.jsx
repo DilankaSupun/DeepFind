@@ -224,8 +224,11 @@ function ResultCard({ file }) {
           <h3 className="result-card__name" title={file.name}>
             {file.name}
           </h3>
-          {file.match_type === 'metadata' && <span className="sr-mode-badge sr-mode-badge--metadata">NAME MATCH</span>}
-          {file.match_type === 'metadata_type' && <span className="sr-mode-badge sr-mode-badge--metadata">TYPE MATCH</span>}
+          {file.match_type === 'exact_name' && <span className="sr-mode-badge sr-mode-badge--metadata">EXACT MATCH</span>}
+          {file.match_type === 'name' && <span className="sr-mode-badge sr-mode-badge--metadata">NAME MATCH</span>}
+          {file.match_type === 'app' && <span className="sr-mode-badge sr-mode-badge--metadata">APP MATCH</span>}
+          {file.match_type === 'folder' && <span className="sr-mode-badge sr-mode-badge--metadata">FOLDER MATCH</span>}
+          {file.match_type === 'path' && <span className="sr-mode-badge sr-mode-badge--metadata">PATH MATCH</span>}
           {file.match_type === 'tag' && <span className="sr-mode-badge sr-mode-badge--metadata">TAG MATCH</span>}
           {file.match_type === 'content'  && <span className="sr-mode-badge sr-mode-badge--content">CONTENT MATCH</span>}
           {file.match_type === 'semantic' && <span className="sr-mode-badge sr-mode-badge--semantic">SEMANTIC MATCH</span>}
@@ -306,11 +309,16 @@ function ResultCard({ file }) {
 
 function MatchTypeBadge({ type }) {
   const config = {
-    metadata:      { label: 'Name match',       cls: 'badge--meta' },
-    metadata_type: { label: 'Path + Type match', cls: 'badge--meta' },
+    exact_name:    { label: 'Exact match',      cls: 'badge--meta' },
+    name:          { label: 'Name match',       cls: 'badge--meta' },
+    app:           { label: 'App match',        cls: 'badge--meta' },
+    folder:        { label: 'Folder match',     cls: 'badge--meta' },
+    path:          { label: 'Path match',       cls: 'badge--meta' },
     tag:           { label: 'Tag match',        cls: 'badge--meta' },
     content:       { label: 'Content match',    cls: 'badge--content' },
+    semantic:      { label: 'Semantic match',   cls: 'badge--semantic' },
     hybrid:        { label: 'Hybrid match',     cls: 'badge--hybrid' },
+    metadata:      { label: 'Name match',       cls: 'badge--meta' }, // fallback
   };
   const { label, cls } = config[type] || config.metadata;
   return (

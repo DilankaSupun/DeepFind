@@ -113,6 +113,13 @@ function IndexingPanel({ engineStatus }) {
         </div>
       )}
 
+      {/* Warning */}
+      {status?.warning && (
+        <div className="ip-error" style={{ backgroundColor: 'rgba(234, 179, 8, 0.1)', color: '#eab308', borderColor: 'rgba(234, 179, 8, 0.3)' }} role="alert">
+          <AlertIcon /><span>{status.warning}</span>
+        </div>
+      )}
+
       {/* Offline */}
       {isOffline && (
         <div className="ip-idle-msg">Start the engine to begin indexing</div>

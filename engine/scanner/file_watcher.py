@@ -21,22 +21,49 @@ log = logging.getLogger(__name__)
 watcher_instance = None
 
 
+from scanner.path_utils import normalize_path
+
 class DebouncedFileEventHandler(FileSystemEventHandler):
-    def __init__(self, event_queue: Queue):
+    def __init__(self, event_queue: Queue, excluded_paths: set[str] | None = None):
         super().__init__()
         self.queue = event_queue
+        # Normalize excluded paths for fast comparison
+        self._excluded = {
+            normalize_path(p)
+            for p in (excluded_paths or set())
+        }
+
+    def _is_excluded(self, path: str) -> bool:
+        """Returns True if path falls under any exclusion prefix."""
+        if not self._excluded:
+            return False
+        norm = normalize_path(path)
+        for excl in self._excluded:
+            if norm == excl or norm.startswith(excl + "/"):
+                return True
+        return False
 
     def _enqueue(self, event_type, path, old_path=None):
-        # Ignore obvious temp/system files
+        # Skip obvious temp/system names (fast string checks)
+        norm_path = normalize_path(path)
+        norm_old = normalize_path(old_path) if old_path else None
+        
+        # We can check the raw path for fast string skips to avoid lowering everything before skipping
         if "\\$RECYCLE.BIN\\" in path or "/.git/" in path or "/node_modules/" in path:
             return
         if "/.venv/" in path or "/__pycache__/" in path:
             return
             
+        # Skip paths under scan_scope exclusions
+        if self._is_excluded(norm_path):
+            return
+        if norm_old and self._is_excluded(norm_old):
+            return
+
         self.queue.put({
             "type": event_type,
-            "path": path,
-            "old_path": old_path,
+            "path": norm_path,
+            "old_path": norm_old,
             "time": time.time()
         })
 
@@ -55,6 +82,7 @@ class DebouncedFileEventHandler(FileSystemEventHandler):
     def on_moved(self, event):
         if not event.is_directory:
             self._enqueue("moved", event.dest_path, old_path=event.src_path)
+
 
 
 class FileWatcher:
@@ -76,13 +104,21 @@ class FileWatcher:
         if self.is_running:
             return False
 
-        active_folders = [f["folder_path"] for f in FoldersRepository.list_folders(active_only=True)]
+        # Load current exclusion paths and scan roots from scan_scope
+        try:
+            from database.repositories import ScanScopeRepository
+            excluded_paths = ScanScopeRepository.get_excluded_path_strings()
+            active_folders = ScanScopeRepository.get_effective_scan_roots()
+        except Exception as exc:
+            log.warning("FileWatcher: Could not load scope: %s", exc)
+            return False
+
         if not active_folders:
-            log.warning("FileWatcher: No active folders to watch.")
+            log.warning("FileWatcher: No active scan roots to watch.")
             return False
 
         self.observer = Observer()
-        handler = DebouncedFileEventHandler(self.event_queue)
+        handler = DebouncedFileEventHandler(self.event_queue, excluded_paths=excluded_paths)
 
         watched_count = 0
         for f in active_folders:

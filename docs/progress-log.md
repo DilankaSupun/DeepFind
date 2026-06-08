@@ -150,6 +150,35 @@ metadata_indexed → content_skipped_large_file  (>25 MB)
 
 ---
 
+## Step 19: Scan Scope / Exclusion Manager
+*Replacing manual folder toggles with an automatic scan scope.*
+
+**Status:** Completed
+**Date:** June 7, 2026
+
+**Architecture Changes:**
+- DeepFind now scans allowed local paths automatically instead of requiring users to manually toggle sources.
+- Local drives (e.g. `C:/`, `D:/`) and common folders are automatically treated as active scan roots.
+- Excluded folders and drives are skipped at the filesystem walker level.
+- `scan_scope` table introduced to manage user exclusions and system exclusions.
+- Old `FolderManager` replaced with an exclusion-first `ScanScopePanel` UI.
+- System exclusions (like `C:/Windows`, `node_modules`, `.git`) are automatically seeded.
+
+**Files Added/Modified:**
+- `engine/database/schema.sql` — Added `scan_scope` table
+- `engine/database/db.py` — Added incremental migration for `scan_scope`
+- `engine/database/repositories.py` — Added `ScanScopeRepository`
+- `engine/config.py` — Expanded `SKIP_DIRECTORIES` and added `SYSTEM_EXCLUDED_PATHS`
+- `engine/api/routes/scan_scope.py` — New API endpoints for scope management
+- `engine/api/server.py` — Registered `scan_scope` router
+- `engine/scanner/file_scanner.py` — Implemented exclusion path pruning in `os.walk`
+- `engine/scanner/file_watcher.py` — Added `_is_excluded` filtering in `DebouncedFileEventHandler`
+- `engine/indexer/index_manager.py` — Loaded exclusions and passed to `scan_folder`
+- `app/frontend/src/components/ScanScopePanel/ScanScopePanel.jsx` — New UI component
+- `app/frontend/src/App.jsx` — Swapped `FolderManager` for `ScanScopePanel`
+
+---
+
 ## 2026-05-19 — Step 8: Filename, Path & Extension Search
 
 ### What Was Done
