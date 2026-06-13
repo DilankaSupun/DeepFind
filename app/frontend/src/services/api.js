@@ -11,7 +11,7 @@
 const BASE_URL = 'http://127.0.0.1:8765';
 
 /** Milliseconds before a fetch request times out */
-const TIMEOUT_MS = 5000;
+const TIMEOUT_MS = 15000;
 
 /**
  * Helper to identify abort or timeout errors cleanly.

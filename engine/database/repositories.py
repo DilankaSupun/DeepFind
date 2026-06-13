@@ -303,7 +303,7 @@ class FilesRepository:
                     UPDATE files
                     SET name=:name, extension=:extension, size=:size,
                         modified_at=:modified_at, last_indexed_at=:now,
-                        status='metadata_indexed'
+                        status='metadata_indexed', tags=NULL
                     WHERE path=:path
                     """,
                     to_update,

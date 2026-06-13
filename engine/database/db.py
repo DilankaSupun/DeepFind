@@ -194,6 +194,26 @@ def _run_migrations() -> None:
             """)
             log.info("Migration applied: created scan_scope table")
 
+        # Step 24: Expression indexes for case-insensitive fast-path lookups.
+        # Without these, lower(name)=? and lower(extension)=? always cause
+        # full table scans regardless of the regular idx_files_name index.
+        existing_indexes = {
+            row["name"]
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='files'"
+            ).fetchall()
+        }
+        if "idx_files_name_lower" not in existing_indexes:
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_files_name_lower ON files(lower(name))"
+            )
+            log.info("Migration applied: created idx_files_name_lower")
+        if "idx_files_extension_lower" not in existing_indexes:
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_files_extension_lower ON files(lower(extension))"
+            )
+            log.info("Migration applied: created idx_files_extension_lower")
+
 
 
 @contextmanager

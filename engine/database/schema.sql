@@ -38,6 +38,12 @@ CREATE INDEX IF NOT EXISTS idx_files_path        ON files(path);
 CREATE INDEX IF NOT EXISTS idx_files_last_indexed_at ON files(last_indexed_at);
 CREATE INDEX IF NOT EXISTS idx_files_tags        ON files(tags);
 
+-- Expression indexes for case-insensitive fast-path lookups (Step 24).
+-- lower(name) enables: exact equality, stem-prefix LIKE 'x.%', prefix LIKE 'x%'
+-- lower(extension) enables: exact extension equality without full table scan
+CREATE INDEX IF NOT EXISTS idx_files_name_lower      ON files(lower(name));
+CREATE INDEX IF NOT EXISTS idx_files_extension_lower ON files(lower(extension));
+
 
 -- ── 2. indexed_folders ────────────────────────────────────
 -- Stores folders that the user has selected for indexing.

@@ -31,6 +31,7 @@ from api.routes import system as system_routes
 from api.routes import watcher as watcher_routes
 from api.routes import reset as reset_routes
 from api.routes import scan_scope as scan_scope_routes
+from api.routes import pipeline as pipeline_routes
 
 log = logging.getLogger(__name__)
 
@@ -47,11 +48,34 @@ async def lifespan(app: FastAPI):
     log.info("Initializing database...")
     init_db()
     log.info("Database ready.")
+    
+    # Initialize Scan Scope (idempotent, sets up default scan roots)
+    from api.routes.scan_scope import initialize_scan_scope
+    try:
+        initialize_scan_scope()
+        log.info("Scan scope initialized.")
+    except Exception as e:
+        log.error(f"Failed to initialize scan scope: {e}")
+        
+    from config import AUTO_SCAN_ENABLED
+    if AUTO_SCAN_ENABLED:
+        from scanner.file_watcher import get_watcher
+        from indexer.background_pipeline import start_pipeline, get_status
+        
+        # Only start watcher/pipeline if auto processing is enabled
+        status = get_status()
+        if status.get("auto_processing_enabled", True):
+            get_watcher().start()
+            start_pipeline()
 
     yield  # App runs here
 
-    # Shutdown (nothing to clean up yet)
+    # Shutdown
     log.info("DeepFind Engine shutting down.")
+    from indexer.background_pipeline import stop_pipeline
+    stop_pipeline()
+    from scanner.file_watcher import get_watcher
+    get_watcher().stop()
 
 
 # ── FastAPI app instance ───────────────────────────────────────────────────────
@@ -106,6 +130,7 @@ app.include_router(system_routes.router,      tags=["System"])
 app.include_router(watcher_routes.router,     tags=["Watcher"])
 app.include_router(reset_routes.router,       tags=["Reset"])
 app.include_router(scan_scope_routes.router,  tags=["ScanScope"])
+app.include_router(pipeline_routes.router,    tags=["Pipeline"])
 
 # Future routers — added in later steps:
 # app.include_router(settings.router,prefix="/settings",tags=["Settings"])

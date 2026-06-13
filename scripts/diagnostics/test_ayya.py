@@ -1,5 +1,5 @@
-import sys
-sys.path.append("engine")
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "engine"))
 from search.query_parser import parse_query
 from search.hybrid_search import unified_search
 

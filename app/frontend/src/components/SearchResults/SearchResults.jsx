@@ -18,6 +18,23 @@ import './SearchResults.css';
  *   noContentWarning    — bool: content searched but no extracted files exist
  *   hasExtractedContent — bool: at least some files have been extracted
  */
+/**
+ * Safely renders snippet text with [[HL]]...[[/HL]] markers.
+ * Splits text by the markers and wraps highlighted terms in <mark>.
+ * React natively escapes all strings, preventing XSS injection.
+ */
+function renderHighlightedText(text) {
+  if (!text) return null;
+  const parts = text.split(/\[\[HL\]\](.*?)\[\[\/HL\]\]/g);
+  return parts.map((part, index) => {
+    // Because of the capture group, odd indices are the matched terms
+    if (index % 2 === 1) {
+      return <mark key={index} className="highlighted-term">{part}</mark>;
+    }
+    return <span key={index}>{part}</span>;
+  });
+}
+
 function SearchResults({
   state, results = [], total = 0, query = '',
   searchMode = 'all', limit = 50, error = null,
@@ -240,11 +257,21 @@ function ResultCard({ file }) {
           {file.path}
         </p>
 
-        {/* Content snippet */}
         {file.snippet && (
-          <p className="result-card__snippet">
-            {file.snippet}
-          </p>
+          <div className="result-card__snippet-wrapper">
+            <span className="result-card__snippet-label">
+              {file.snippet_source === 'semantic_chunk'
+                ? 'Semantic preview'
+                : file.snippet_source === 'path_context'
+                ? 'Location'
+                : 'Content preview'}:
+            </span>
+            <p className={`result-card__snippet ${file.snippet_source === 'path_context' ? 'result-card__snippet--location' : ''}`}>
+              {file.snippet_source === 'path_context'
+                ? file.snippet
+                : renderHighlightedText(file.snippet)}
+            </p>
+          </div>
         )}
 
         {/* Tags */}

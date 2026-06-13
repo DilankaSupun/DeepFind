@@ -3,6 +3,23 @@ DeepFind Engine — Configuration
 
 Single source of truth for paths, limits, and defaults.
 All other modules import from here — never hardcode paths elsewhere.
+
+Packaging note (Step 21):
+  In development, DATA_DIR lives inside engine/ which is always writable.
+  After PyInstaller bundling, ENGINE_DIR points INSIDE the frozen .exe bundle
+  (read-only). DATA_DIR must be redirected to a writable user-data directory.
+
+  Future packaging change:
+    import sys, os
+    if getattr(sys, 'frozen', False):
+        # Running as PyInstaller bundle
+        _appdata = os.environ.get('DEEPFIND_DATA_DIR') or os.path.expanduser('~')
+        DATA_DIR = Path(_appdata) / 'AppData' / 'Roaming' / 'DeepFind' / 'data'
+    else:
+        DATA_DIR = ENGINE_DIR / 'data'
+
+  The Electron backend-manager (Step 21) will pass DEEPFIND_DATA_DIR as an
+  environment variable when launching the bundled engine executable.
 """
 
 from pathlib import Path
@@ -10,10 +27,14 @@ from pathlib import Path
 # ── Directory layout ───────────────────────────────────────────────────────────
 
 # Root of the engine/ directory (where this file lives)
+# Packaging note: This will point INSIDE the frozen bundle in production.
+#                 It is safe for read-only resources (schema.sql, etc.).
 ENGINE_DIR = Path(__file__).parent
 
 # data/ directory: holds the SQLite database and FAISS index
-# Lives at engine/data/ — excluded from git via .gitignore
+# Lives at engine/data/ in development.
+# Packaging note: Must be redirected to %APPDATA%\DeepFind\data\ in production.
+#                 This is a WRITABLE user-data path, not a bundled resource.
 DATA_DIR = ENGINE_DIR / "data"
 
 # SQLite database file

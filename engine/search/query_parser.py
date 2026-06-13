@@ -346,17 +346,51 @@ def parse_query(original_query: str) -> Dict[str, Any]:
             literal_terms.add(clean_token)
 
     # Extract phrase candidates (proper nouns / titles)
-    phrase_tokens = []
+    phrase_candidates = []
+    
+    # 1. Explicit quoted phrases
+    quoted_matches = re.findall(r'"([^"]+)"', original_query)
+    for qm in quoted_matches:
+        if len(qm.split()) > 1:
+            phrase_candidates.append(qm.strip())
+            
+    # 2. Natural Phrase Preservation
+    # Retain contiguous words avoiding location/time/filetype filters.
+    # We DO NOT strip INSTRUCTION_WORDS (like "and", "the") internally,
+    # but we trim them from the start and end (e.g. "find me", "in").
+    natural_tokens = []
     for raw in raw_tokens:
+        # Ignore tokens that were part of quotes if they just duplicate? 
+        # For simplicity, we just process raw_tokens. FTS will deduplicate if identical.
         clean = re.sub(r'[^\w]', '', raw.lower())
-        if clean in location_words_used or clean in time_words_used or clean in INSTRUCTION_WORDS or clean in LITERAL_INTENT_WORDS or clean in file_type_words_used:
+        if clean in location_words_used or clean in time_words_used or clean in LITERAL_INTENT_WORDS or clean in file_type_words_used:
             continue
         if clean:
-            phrase_tokens.append(raw)
+            natural_tokens.append(raw)
             
-    phrase_candidates = []
-    if len(phrase_tokens) > 1:
-        phrase_candidates.append(" ".join(phrase_tokens))
+    # Trim instruction words from the start
+    while natural_tokens:
+        clean_first = re.sub(r'[^\w]', '', natural_tokens[0].lower())
+        if clean_first in INSTRUCTION_WORDS:
+            natural_tokens.pop(0)
+        else:
+            break
+            
+    # Trim instruction words from the end
+    while natural_tokens:
+        clean_last = re.sub(r'[^\w]', '', natural_tokens[-1].lower())
+        if clean_last in INSTRUCTION_WORDS:
+            natural_tokens.pop()
+        else:
+            break
+            
+    if len(natural_tokens) > 1:
+        nat_phrase = " ".join(natural_tokens)
+        # Avoid adding if it perfectly matches a quoted phrase we already have
+        # Strip quotes from nat_phrase just in case
+        clean_nat = nat_phrase.replace('"', '').strip()
+        if clean_nat and not any(clean_nat.lower() == p.lower() for p in phrase_candidates):
+            phrase_candidates.append(clean_nat)
 
     # Evaluate Search Intent & Gating
     search_intent = "hybrid"

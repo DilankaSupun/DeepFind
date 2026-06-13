@@ -59,11 +59,13 @@ def unified_search(
         
         for r in data["results"]:
             r["match_type"] = "metadata"
+            r["match_tier"] = 0
             r.setdefault("snippet", "")
             _calculate_score(r, parsed)
+            _add_path_fallback_snippet(r)
             
         # Re-sort after scoring
-        sorted_results = sorted(data["results"], key=lambda r: r["score"], reverse=True)
+        sorted_results = sorted(data["results"], key=lambda r: (r.get("match_tier", 99), -r.get("score", 0)))
         timing["merge_rank"] = int((time.monotonic() - t2) * 1000)
         timing["content_search"] = 0
         timing["total"] = int((time.monotonic() - t0) * 1000)
@@ -93,8 +95,12 @@ def unified_search(
         no_content = data.get("no_content", False)
         for r in data["results"]:
             _calculate_score(r, parsed)
+            # Content results already have FTS snippets; only add path fallback
+            # if no highlight was returned from FTS5.
+            if not r.get("snippet"):
+                _add_path_fallback_snippet(r)
             
-        sorted_results = sorted(data["results"], key=lambda r: r["score"], reverse=True)
+        sorted_results = sorted(data["results"], key=lambda r: (r.get("match_tier", 99), -r.get("score", 0)))
         timing["merge_rank"] = int((time.monotonic() - t2) * 1000)
         timing["metadata_search"] = 0
         timing["total"] = int((time.monotonic() - t0) * 1000)
@@ -138,13 +144,22 @@ def unified_search(
     # Fetch both result sets (over-fetch to allow dedup + re-rank)
     FETCH = min(limit * 4, 200)
 
-    t1 = time.monotonic()
-    meta_data    = metadata_search(parsed, limit=FETCH, offset=0)
-    timing["metadata_search"] = int((time.monotonic() - t1) * 1000)
-    
     t2 = time.monotonic()
-    content_data = search_content(parsed, limit=FETCH, offset=0)
+    content_data = {"results": [], "total": 0}
+    is_phrase = bool(parsed.get("phrase_candidates"))
+    if parsed.get("content_terms") or is_phrase:
+        content_data = search_content(parsed, limit=FETCH, offset=0)
     timing["content_search"] = int((time.monotonic() - t2) * 1000)
+
+    t1 = time.monotonic()
+    meta_data = {"results": [], "total": 0}
+    # Fast Path: If we found exact content matches for a structured phrase, 
+    # skip the incredibly slow metadata full-table LIKE scans.
+    if is_phrase and len(content_data["results"]) > 0:
+        timing["metadata_search"] = 0
+    else:
+        meta_data = metadata_search(parsed, limit=FETCH, offset=0)
+        timing["metadata_search"] = int((time.monotonic() - t1) * 1000)
 
     t3 = time.monotonic()
     semantic_data = {"results": [], "total": 0}
@@ -157,20 +172,24 @@ def unified_search(
     by_id: dict[int, dict] = {}
     for r in meta_data["results"]:
         r["match_sources"] = ["metadata"]
+        r["match_tier"] = 0
         r.setdefault("snippet", "")
         by_id[r["id"]] = r
 
     # Merge content results
     for cr in content_data["results"]:
         fid = cr["id"]
+        exact_source = cr.get("match_source", "content")
         if fid in by_id:
             mr = by_id[fid]
-            if "content" not in mr.get("match_sources", []):
-                mr.setdefault("match_sources", []).append("content")
+            if exact_source not in mr.get("match_sources", []):
+                mr.setdefault("match_sources", []).append(exact_source)
             
             # Update snippet only if it exists
             if not mr.get("snippet") and cr.get("snippet"):
                 mr["snippet"] = cr.get("snippet")
+                mr["snippet_source"] = cr.get("snippet_source")
+                mr["has_content_snippet"] = cr.get("has_content_snippet")
             
             mr["matched_metadata_terms"] = list(set(mr.get("matched_metadata_terms", []) + cr.get("matched_metadata_terms", [])))
             mr["matched_extensions"] = list(set(mr.get("matched_extensions", []) + cr.get("matched_extensions", [])))
@@ -195,15 +214,21 @@ def unified_search(
             # Update snippet only if no snippet exists
             if not mr.get("snippet") and sr.get("snippet"):
                 mr["snippet"] = sr.get("snippet")
+                mr["snippet_source"] = sr.get("snippet_source")
+                mr["has_content_snippet"] = sr.get("has_content_snippet")
             mr.setdefault("matched_reasons", []).append("Semantic meaning matched your query")
             mr["semantic_score"] = sr.get("semantic_score", 0)
         else:
             sr["match_sources"] = ["semantic"]
+            sr["match_tier"] = 4
             by_id[fid] = sr
 
     # Calculate final scores
     for r in by_id.values():
         _calculate_score(r, parsed)
+        # Add path-context fallback for results with no FTS snippet
+        if not r.get("snippet"):
+            _add_path_fallback_snippet(r)
         
     # Filter out results with score 0 (which includes hard-filtered out items)
     valid_results = [r for r in by_id.values() if r.get("score", 0) > 0]
@@ -212,7 +237,7 @@ def unified_search(
     valid_results = filter_allowed_files(valid_results)
 
     # Sort merged results
-    merged = sorted(valid_results, key=lambda r: r["score"], reverse=True)
+    merged = sorted(valid_results, key=lambda r: (r.get("match_tier", 99), -r.get("score", 0)))
 
     # Apply offset + limit
     total    = len(merged)
@@ -637,10 +662,45 @@ def _calculate_score(r: dict, parsed: dict) -> None:
     r["primary_match_type"] = primary
     r["match_type"] = primary
     
-    # Debug fields
+    # Debug fields — only set if not already populated by FTS/semantic layers
     r["has_extracted_text"] = bool(r.get("snippet"))
     r["fts_content_match"] = is_content
-    r["snippet_source"] = "extracted_text" if is_content else None
+    # Preserve snippet_source set by fulltext_search.py for content matches;
+    # only default to None if it hasn't been set yet.
+    if "snippet_source" not in r:
+        r["snippet_source"] = None
+
+
+def _add_path_fallback_snippet(r: dict) -> None:
+    """
+    For metadata-only results with no FTS content snippet, build a short
+    path-context preview: "ParentFolder / filename.ext" (last 2 path segments).
+
+    This gives users location context in the result card without needing
+    content extraction.  The snippet never contains [[HL]] markers — it is
+    plain text and will not be styled as highlighted content in the frontend.
+
+    Only called when r.get("snippet") is falsy.  Never overwrites FTS snippets.
+    """
+    path = (r.get("path") or "").replace("\\", "/")
+    if not path:
+        return
+
+    segments = [s for s in path.split("/") if s]
+    if not segments:
+        return
+
+    # Take the last 2 meaningful segments (parent folder + filename)
+    # e.g.  "C:/Users/Alice/Documents/Projects/report.pdf"
+    #   →   "Projects / report.pdf"
+    if len(segments) >= 2:
+        preview = f"{segments[-2]} / {segments[-1]}"
+    else:
+        preview = segments[-1]
+
+    r["snippet"] = preview
+    r["snippet_source"] = "path_context"
+    r["has_content_snippet"] = False
 
 
 def _recency_score(modified_at: str | None) -> float:

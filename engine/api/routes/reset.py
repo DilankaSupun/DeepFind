@@ -19,6 +19,10 @@ router = APIRouter(prefix="/reset", tags=["Reset"])
 
 def _stop_workers():
     import time
+    # Stop pipeline safely
+    from indexer.background_pipeline import stop_pipeline
+    stop_pipeline()
+    
     # Stop watcher if running
     watcher = get_watcher()
     if watcher.is_running:

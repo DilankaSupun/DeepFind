@@ -7,6 +7,7 @@ import ExtractionPanel from './components/ExtractionPanel/ExtractionPanel.jsx';
 import TaggingPanel from './components/TaggingPanel/TaggingPanel.jsx';
 import SemanticPanel from './components/SemanticPanel/SemanticPanel.jsx';
 import ResourceMonitor from './components/ResourceMonitor/ResourceMonitor.jsx';
+import BackgroundPipelinePanel from './components/BackgroundPipelinePanel/BackgroundPipelinePanel.jsx';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary.jsx';
 import HomeDashboard from './components/HomeDashboard/HomeDashboard.jsx';
 import ResetPanel from './components/ResetPanel/ResetPanel.jsx';
@@ -180,6 +181,13 @@ function App() {
         {/* ── Home Dashboard (shown when idle) ── */}
         {searchState === 'idle' && (
           <HomeDashboard onSearchClick={handleSearch} />
+        )}
+
+        {/* ── Background Pipeline Panel (hidden during search) ── */}
+        {searchState === 'idle' && (
+          <ErrorBoundary>
+            <BackgroundPipelinePanel />
+          </ErrorBoundary>
         )}
 
         {/* ── Scan Scope Panel (hidden during search) ── */}

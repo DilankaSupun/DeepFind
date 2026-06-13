@@ -4,12 +4,38 @@
  * Responsibilities (current step):
  *   - Create the desktop window
  *   - Load the React UI (Vite dev server in dev, built files in production)
- *   - Register IPC handlers (folder picker, future: open file, etc.)
+ *   - Register IPC handlers (folder picker, open file, show in folder)
  *   - Handle window lifecycle
  *
- * Future steps will add:
- *   - Starting/stopping the Python FastAPI backend
- *   - Open file / open file location actions
+ * Step 21 will add (Python backend bundling):
+ *   - BackendManager: locates, launches, and terminates the packaged Python .exe
+ *   - Interface contract (to be implemented in app/electron/backend-manager.js):
+ *
+ *     BackendManager.locate()     → string | null
+ *       Finds the bundled engine executable path relative to app.getAppPath().
+ *       In dev: returns null (user runs engine manually).
+ *       In prod: returns path to resources/engine/deepfind-engine.exe
+ *
+ *     BackendManager.launch(dataDir)  → ChildProcess
+ *       Spawns the engine executable with DEEPFIND_DATA_DIR env var set to
+ *       Electron's app.getPath('userData') + '/data'.
+ *       Captures stdout/stderr to logs/engine.log.
+ *
+ *     BackendManager.waitReady(timeoutMs)  → Promise<boolean>
+ *       Polls GET http://127.0.0.1:8765/health until 200 or timeout.
+ *       Shows a loading screen in Electron while waiting.
+ *
+ *     BackendManager.ensureSingle()  → boolean
+ *       Returns true if the backend port is already listening (prevents
+ *       double-launch when user opens a second app window).
+ *
+ *     BackendManager.terminate()  → void
+ *       Sends SIGTERM to the engine process on app 'before-quit' event.
+ *       Waits up to 3 seconds before force-killing.
+ *
+ *     BackendManager.getLogPath()  → string
+ *       Returns the absolute path to the engine log file for display
+ *       in error dialogs or a "View Logs" button.
  */
 
 const { app, BrowserWindow, shell, globalShortcut } = require('electron');

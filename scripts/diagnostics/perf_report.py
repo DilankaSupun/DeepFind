@@ -1,7 +1,10 @@
-import sqlite3, json, urllib.request, urllib.parse
+import sqlite3, json, urllib.request, urllib.parse, os
+
+_REPO_ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
+_DB_PATH = os.path.join(_REPO_ROOT, "engine", "data", "deepfind.db")
 
 def get_db_stats():
-    conn = sqlite3.connect('engine/data/deepfind.db')
+    conn = sqlite3.connect(_DB_PATH)
     total = conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
     extracted = conn.execute("SELECT COUNT(*) FROM files WHERE status = 'content_extracted'").fetchone()[0]
     tagged = conn.execute("SELECT COUNT(*) FROM files WHERE tags IS NOT NULL AND tags != ''").fetchone()[0]

@@ -4,6 +4,8 @@ DeepFind Engine — FTS5 Full-Text Content Search (Step 10)
 Searches extracted_text using the SQLite files_fts virtual table.
 Returns ranked results with snippets. No disk scanning. No AI.
 Step 11.5: Uses parsed query parts (content_terms) with OR-logic fallback.
+Step 25:   Snippet marker safety — literal [[HL]]/[[/HL]] in file content are
+           neutralised before returning to the API to prevent fake highlights.
 """
 
 import logging
@@ -40,29 +42,71 @@ def search_content(parsed: dict, limit: int = 50, offset: int = 0) -> dict:
     if not content_terms:
          return {"total": 0, "results": [], "no_content": False}
 
-    fts_query = _build_fts_query(content_terms)
+    phrase_candidates = parsed.get("phrase_candidates", [])
     
-    # Extract original string for snippet generation
+    queries = []
+    # 1. Exact Phrase
+    if phrase_candidates:
+        q_phrase = _build_fts_query([], phrase_candidates=phrase_candidates)
+        if q_phrase and q_phrase != '""':
+            queries.append((q_phrase, 1, "content_phrase"))
+            
+    # 2. All Terms (AND)
+    if len(content_terms) > 1:
+        q_all = _build_fts_query(content_terms, match_all=True)
+        if q_all and q_all != '""':
+            queries.append((q_all, 2, "content_all_terms"))
+            
+    # 3. Partial Terms (OR)
+    q_partial = _build_fts_query(content_terms, match_all=False)
+    if q_partial and q_partial != '""':
+        queries.append((q_partial, 3, "content_partial"))
+        
+    if not queries:
+        return {"total": 0, "results": [], "no_content": False}
+
     orig_q = parsed.get("normalized", "")
-    
     drive_filters = parsed.get("drive_filters", [])
     folder_filters = parsed.get("folder_filters", [])
     folder_phrase_filters = parsed.get("folder_phrase_filters", [])
     date_filters = parsed.get("date_filters", {})
 
-    try:
-        return _run_fts(fts_query, orig_q, content_terms, drive_filters, folder_filters, folder_phrase_filters, date_filters, limit, offset)
-    except Exception as exc:
-        log.warning("FTS query failed (%s), retrying with sanitized query: %s", exc, fts_query)
-        # Fall back to single-token OR query
-        simple = _sanitize_fts(content_terms)
-        if not simple:
-            return {"total": 0, "results": [], "no_content": False}
+    seen_ids = set()
+    combined_results = []
+    combined_total = 0
+    
+    for q_str, tier, source in queries:
+        if len(combined_results) >= limit:
+            break
+            
+        remaining_limit = limit - len(combined_results)
+        
         try:
-            return _run_fts(simple, orig_q, content_terms, drive_filters, folder_filters, folder_phrase_filters, date_filters, limit, offset)
-        except Exception as exc2:
-            log.error("FTS fallback also failed: %s", exc2)
-            return {"total": 0, "results": [], "no_content": False}
+            res = _run_fts(q_str, orig_q, content_terms, drive_filters, folder_filters, folder_phrase_filters, date_filters, remaining_limit, offset)
+        except Exception as exc:
+            log.warning("FTS query failed (%s), retrying with sanitized query: %s", exc, q_str)
+            if tier == 3:
+                simple = _sanitize_fts(content_terms)
+                if not simple:
+                    continue
+                try:
+                    res = _run_fts(simple, orig_q, content_terms, drive_filters, folder_filters, folder_phrase_filters, date_filters, remaining_limit, offset)
+                except Exception as exc2:
+                    log.error("FTS fallback also failed: %s", exc2)
+                    continue
+            else:
+                continue
+                
+        for r in res.get("results", []):
+            if r["id"] not in seen_ids:
+                seen_ids.add(r["id"])
+                r["match_tier"] = tier
+                r["match_source"] = source
+                combined_results.append(r)
+                
+        combined_total += res.get("total", 0)
+        
+    return {"total": combined_total, "results": combined_results, "no_content": False}
 
 
 def check_has_extracted_content() -> bool:
@@ -179,7 +223,7 @@ def _run_fts(fts_query: str, original_query: str, content_terms: list, drive_fil
                 f.id, f.name, f.path, f.extension, f.size, f.modified_at, f.status,
                 f.tags,
                 rank AS fts_rank,
-                snippet(files_fts, 2, '', '', '...', 40) AS snippet_text
+                snippet(files_fts, 2, '[[HL]]', '[[/HL]]', '...', 40) AS snippet_text
             FROM files_fts
             JOIN files f ON files_fts.rowid = f.id
             WHERE files_fts MATCH ?
@@ -208,14 +252,19 @@ def _run_fts(fts_query: str, original_query: str, content_terms: list, drive_fil
         d = dict(row)
         tags_str = (d.get("tags") or "").lower()
 
-        # FTS5 returns a snippet_text without formatting (using empty string boundaries)
-        snippet = d.pop("snippet_text", "") or ""
+        # FTS5 returns snippet_text; if the match wasn’t in extracted_text it just
+        # returns the start of the text with no markers.
+        # We sanitize first (neutralise any literal [[HL]] from file content), then
+        # check if real FTS5 highlights are present.
+        raw_snippet = d.pop("snippet_text", "") or ""
+        raw_snippet = _sanitize_snippet(raw_snippet)
+        has_real_highlight = "[[HL]]" in raw_snippet
+        snippet = raw_snippet if has_real_highlight else ""
 
         raw_rank = d.get("fts_rank") or 0
         score = max(0.0, min(1.0, 1.0 / (1.0 + abs(raw_rank))))
 
         # Note: We aren't loading full extracted_text anymore, so we only loosely match content terms here.
-        # Strict matching would require FTS highlight data or keeping full text. We use the snippet for a quick check.
         matched_content = [term for term in content_terms if term in snippet.lower()]
         
         p = d.get("path", "").lower()
@@ -245,17 +294,32 @@ def _run_fts(fts_query: str, original_query: str, content_terms: list, drive_fil
         d["score"]          = round(score, 3)
         d["match_type"]     = "content"
         d["snippet"]        = snippet
+        if snippet:
+            d["snippet_source"] = "extracted_text"
+            d["has_content_snippet"] = True
+        else:
+            d["snippet_source"] = None
+            d["has_content_snippet"] = False
         d["size_human"]     = _human_size(d.get("size") or 0)
         results.append(d)
 
     return {"total": total, "results": results, "no_content": not has_content}
 
 
-def _build_fts_query(terms: list) -> str:
+def _build_fts_query(terms: list, phrase_candidates: list = None, match_all: bool = False) -> str:
     """
-    Convert a list of terms into a safe FTS5 query using OR.
+    Convert a list of terms into a safe FTS5 query.
+    If phrase_candidates are provided, it attempts an exact phrase match FIRST.
     Restricts search exclusively to the extracted_text column.
     """
+    if phrase_candidates:
+        # FTS5 exact phrase syntax: "word1 word2"
+        # We take the first candidate
+        phrase = phrase_candidates[0]
+        cleaned_phrase = re.sub(r'["\'\(\)\*\:\^]', ' ', phrase).strip()
+        if cleaned_phrase:
+            return f'extracted_text : "{cleaned_phrase}"'
+
     safe_terms = []
     for term in terms:
         cleaned = re.sub(r'["\'\(\)\*\:\^]', ' ', term).strip()
@@ -266,7 +330,8 @@ def _build_fts_query(terms: list) -> str:
     if not safe_terms:
         return '""'
         
-    query_body = " OR ".join(safe_terms)
+    operator = " AND " if match_all else " OR "
+    query_body = operator.join(safe_terms)
     return f"extracted_text : ({query_body})"
 
 
@@ -279,6 +344,47 @@ def _sanitize_fts(terms: list) -> str:
         if alpha:
             return f'extracted_text : "{alpha}"*'
     return '""'
+
+
+def _sanitize_snippet(snippet: str) -> str:
+    """
+    Neutralise literal [[HL]] / [[/HL]] that exist in the file's source content
+    and would otherwise produce fake highlights in the frontend.
+
+    Strategy (Step 25):
+      FTS5 snippet() produces output like:
+        "...plain text [[HL]]matched_word[[/HL]] more plain text..."
+
+      The matched segments (between [[HL]]...[[/HL]]) are injected by FTS5
+      and are trustworthy.  The non-match segments (outside the markers) are
+      verbatim file content and may contain literal [[HL]] / [[/HL]] strings.
+
+      We split on the FTS5 markers using a capture group so that the resulting
+      list alternates:  [non-match, match, non-match, match, ...]
+      Even indices (0, 2, 4, ...) are non-match (file content) — strip markers.
+      Odd indices (1, 3, 5, ...) are matched terms from FTS5 — keep as-is.
+
+      After stripping, we reassemble with the real markers.
+    """
+    if not snippet or ("[[HL]]" not in snippet and "[[/HL]]" not in snippet):
+        return snippet
+
+    # Split while capturing the content between markers
+    parts = re.split(r"\[\[HL\]\](.*?)\[\[/HL\]\]", snippet)
+    # parts[0], parts[1], parts[2], ... = non-match, match, non-match, match, ...
+
+    sanitized_parts: list[str] = []
+    for i, part in enumerate(parts):
+        if i % 2 == 0:
+            # Non-match segment: strip any literal [[HL]]/[[/HL]] from file content
+            # Replace with a visually neutral equivalent so the text is still readable
+            clean = part.replace("[[HL]]", "[HL]").replace("[[/HL]]", "[/HL]")
+            sanitized_parts.append(clean)
+        else:
+            # Match segment injected by FTS5: wrap with real markers
+            sanitized_parts.append(f"[[HL]]{part}[[/HL]]")
+
+    return "".join(sanitized_parts)
 
 
 def _make_snippet(text: str, q: str, length: int) -> str:

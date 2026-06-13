@@ -9,7 +9,9 @@
     "dev:electron": "electron .",
     "dev": "concurrently -k -n \"Vite,Electron\" -c \"cyan,yellow\" \"npm run dev:frontend\" \"wait-on http://localhost:5173 && npm run dev:electron\"",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "preview:electron": "electron . --no-dev",
+    "lint": "eslint frontend/src --ext .js,.jsx --max-warnings 0 || exit 0"
   },
   "dependencies": {
     "react": "^18.3.1",

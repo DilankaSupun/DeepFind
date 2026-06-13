@@ -1,5 +1,5 @@
-import sys
-sys.path.append(".")
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "engine"))
 from search.query_parser import parse_query
 from search.filename_search import search_files
 from search.hybrid_search import unified_search, _calculate_score

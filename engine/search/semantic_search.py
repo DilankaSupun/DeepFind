@@ -132,6 +132,8 @@ def search_semantic(query: str, limit: int = 50, offset: int = 0, date_filters: 
                 d = dict(row)
                 d["semantic_score"] = score
                 d["snippet"] = d.pop("chunk_text")[:300] + "..." # basic snippet
+                d["snippet_source"] = "semantic_chunk"
+                d["has_content_snippet"] = False
                 files_map[fid] = d
                 
         # Sort files by best chunk score

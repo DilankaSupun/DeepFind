@@ -43,17 +43,27 @@ class DebouncedFileEventHandler(FileSystemEventHandler):
                 return True
         return False
 
+    def _is_ignored_system_path(self, path: str) -> bool:
+        """Fast string check for common system/temp folders, handling Windows slashes."""
+        norm = path.replace("\\", "/").lower()
+        if "/$recycle.bin/" in norm or "/.git/" in norm or "/node_modules/" in norm:
+            return True
+        if "/.venv/" in norm or "/__pycache__/" in norm or "/cache/" in norm or "/temp/" in norm:
+            return True
+        if norm.endswith("/node_modules") or norm.endswith("/.git") or norm.endswith("/.venv"):
+            return True
+        return False
+
     def _enqueue(self, event_type, path, old_path=None):
-        # Skip obvious temp/system names (fast string checks)
+        # Skip obvious temp/system names using safe normalized path
+        if self._is_ignored_system_path(path):
+            return
+        if old_path and self._is_ignored_system_path(old_path):
+            return
+            
         norm_path = normalize_path(path)
         norm_old = normalize_path(old_path) if old_path else None
         
-        # We can check the raw path for fast string skips to avoid lowering everything before skipping
-        if "\\$RECYCLE.BIN\\" in path or "/.git/" in path or "/node_modules/" in path:
-            return
-        if "/.venv/" in path or "/__pycache__/" in path:
-            return
-            
         # Skip paths under scan_scope exclusions
         if self._is_excluded(norm_path):
             return
@@ -243,6 +253,13 @@ class FileWatcher:
         except Exception as ex:
             log.error(f"Watcher batch error: {ex}")
             self.stats["errors"] += 1
+            
+        # Trigger background pipeline to process the new/modified files
+        try:
+            from indexer.background_pipeline import trigger_pipeline
+            trigger_pipeline()
+        except Exception as e:
+            log.error(f"Failed to trigger background pipeline: {e}")
 
 
 def get_watcher():
