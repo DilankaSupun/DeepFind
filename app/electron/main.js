@@ -41,6 +41,7 @@
 const { app, BrowserWindow, shell, globalShortcut } = require('electron');
 const path = require('path');
 const { registerIpcHandlers } = require('./ipc-handlers');
+const backendManager = require('./backend-manager');
 
 // Detect development mode: app.isPackaged is false when running with `electron .`
 const isDev = !app.isPackaged;
@@ -77,6 +78,9 @@ function createWindow() {
 
       // Security: isolate preload context from renderer
       contextIsolation: true,
+
+      // Pass the dynamic backend port to the preload script
+      additionalArguments: [`--backend-port=${require('./backend-manager').port || 8765}`],
     },
   });
 
@@ -122,31 +126,87 @@ function createWindow() {
   });
 }
 
-// App lifecycle
+// Single instance lock
+const gotTheLock = app.requestSingleInstanceLock();
 
-app.whenReady().then(function() {
-  createWindow();
-
-  // Register Ctrl+Shift+I to open/toggle DevTools on demand (dev mode only)
-  if (isDev) {
-    globalShortcut.register('CommandOrControl+Shift+I', function() {
-      if (mainWindow) {
-        mainWindow.webContents.toggleDevTools();
-      }
-    });
-  }
-
-  // macOS: re-create window when dock icon is clicked and no windows are open
-  app.on('activate', function() {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    // Someone tried to run a second instance, we should focus our window.
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
     }
   });
-});
+
+  app.whenReady().then(async function() {
+    createWindow();
+
+    if (app.isPackaged) {
+      console.log('[DeepFind] Launching Backend...');
+      
+      const startBackend = async () => {
+        if (mainWindow) {
+          mainWindow.webContents.send('engine:status', { state: 'starting', message: 'Starting DeepFind engine...' });
+        }
+        
+        backendManager.launch();
+        try {
+          await backendManager.waitReady(30000);
+          console.log('[DeepFind] Backend is ready!');
+          if (mainWindow) {
+            mainWindow.webContents.send('engine:status', { state: 'ready', message: 'Engine ready' });
+          }
+        } catch (err) {
+          console.error('[DeepFind] Backend failed to start:', err);
+          if (mainWindow) {
+            mainWindow.webContents.send('engine:status', { 
+              state: 'error', 
+              message: 'Engine failed to start', 
+              error: err.message 
+            });
+          }
+        }
+      };
+
+      // Start backend once window finishes loading to ensure IPC is ready
+      mainWindow.webContents.once('did-finish-load', () => {
+        startBackend();
+      });
+      
+      // Also register IPC handlers for retrying / opening logs
+      const { ipcMain, shell } = require('electron');
+      ipcMain.handle('engine:retry', () => {
+        startBackend();
+      });
+      ipcMain.handle('engine:open-logs', () => {
+        shell.openPath(backendManager.getLogPath());
+      });
+    }
+
+    // Register Ctrl+Shift+I to open/toggle DevTools on demand (dev mode only)
+    if (isDev) {
+      globalShortcut.register('CommandOrControl+Shift+I', function() {
+        if (mainWindow) {
+          mainWindow.webContents.toggleDevTools();
+        }
+      });
+    }
+
+    // macOS: re-create window when dock icon is clicked and no windows are open
+    app.on('activate', function() {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow();
+      }
+    });
+  });
+}
 
 // Unregister shortcuts cleanly on quit
 app.on('will-quit', function() {
   globalShortcut.unregisterAll();
+  backendManager.terminate();
 });
 
 // Windows/Linux: quit when all windows are closed

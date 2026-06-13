@@ -24,20 +24,29 @@ log = logging.getLogger(__name__)
 
 _lock = threading.Lock()
 
-# Load auto-processing preference from database, default to True
-_persisted_auto = SettingsRepository.get("auto_processing_enabled", "true")
-_auto_processing = _persisted_auto.lower() == "true"
-
 _state = {
     "active": False,
     "paused": False,
     "current_stage": "idle", # idle, indexing, extraction, tagging, semantic, error
-    "auto_processing_enabled": _auto_processing,
+    "auto_processing_enabled": True, # Will be loaded lazily
     "last_error": None,
     "last_started_at": None,
     "last_completed_at": None,
     "pending_run": False, # Used for debounce trigger
 }
+
+_db_initialized = False
+
+def _ensure_db_state():
+    global _db_initialized
+    if not _db_initialized:
+        try:
+            persisted = SettingsRepository.get("auto_processing_enabled", "true")
+            _state["auto_processing_enabled"] = persisted.lower() == "true"
+            _db_initialized = True
+        except Exception:
+            pass
+
 
 _thread: threading.Thread | None = None
 _stop_event = threading.Event()
@@ -48,6 +57,7 @@ def _now() -> str:
 # ── Public API ─────────────────────────────────────────────────────────────────
 
 def get_status() -> dict:
+    _ensure_db_state()
     with _lock:
         st = dict(_state)
         

@@ -8,7 +8,7 @@
  * Future steps will add: search(), indexFolder(), getFileDetail(), getSettings()...
  */
 
-const BASE_URL = 'http://127.0.0.1:8765';
+const BASE_URL = window.deepfind?.baseUrl || 'http://127.0.0.1:8765';
 
 /** Milliseconds before a fetch request times out */
 const TIMEOUT_MS = 15000;

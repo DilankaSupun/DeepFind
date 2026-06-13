@@ -26,10 +26,14 @@ def health_check():
     Returns engine status, service name, version, and current UTC timestamp.
     The React frontend will poll this to confirm the backend is running.
     """
+    import os
     return {
         "status": "ok",
-        "service": "DeepFind Engine",
+        "service": "deepfind-engine",
+        "instance_id": os.environ.get("DEEPFIND_INSTANCE_ID", "dev-instance"),
+        "api_version": "1",
         "version": "0.1.0",
+        "ready": True,
         "backend": "FastAPI",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }

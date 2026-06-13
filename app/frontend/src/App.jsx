@@ -24,6 +24,21 @@ import './styles/App.css';
  */
 function App() {
   const { status, version } = useEngineStatus();
+  
+  // ── Engine Lifecycle State ───────────────────────────────
+  const [engineLifecycle, setEngineLifecycle] = useState({
+    state: window.deepfind?.isDesktop ? 'starting' : 'ready',
+    message: 'Starting DeepFind engine...',
+    error: null
+  });
+
+  React.useEffect(() => {
+    if (window.deepfind?.onEngineStatus) {
+      window.deepfind.onEngineStatus((data) => {
+        setEngineLifecycle(data);
+      });
+    }
+  }, []);
 
   // ── Search State ─────────────────────────────────────────
   const [searchState, setSearchState]   = useState('idle');   // idle | loading | results | empty | error

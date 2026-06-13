@@ -81,11 +81,29 @@ if __name__ == "__main__":
     print(f"  API Docs   : http://{HOST}:{PORT}/docs")
     print("=" * 56 + "\n")
 
-    uvicorn.run(
-        "api.server:app",
-        host=HOST,
-        port=PORT,
-        reload=True,
-        reload_dirs=["api", "database"],  # Watch both api and database folders
-        log_level="info",
-    )
+    from api.server import app
+    from config import IS_PACKAGED
+    import runtime_control
+    
+    if IS_PACKAGED:
+        config = uvicorn.Config(
+            app=app,
+            host=HOST,
+            port=PORT,
+            log_level="info",
+        )
+        server = uvicorn.Server(config)
+        runtime_control.server = server
+        server.run()
+    else:
+        config = uvicorn.Config(
+            app="api.server:app",
+            host=HOST,
+            port=PORT,
+            reload=True,
+            reload_dirs=["api", "database"],
+            log_level="info",
+        )
+        server = uvicorn.Server(config)
+        runtime_control.server = server
+        server.run()

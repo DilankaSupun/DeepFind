@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './BackgroundPipelinePanel.css';
 
-const API_BASE = 'http://127.0.0.1:8765';
+const API_BASE = window.deepfind?.baseUrl || 'http://127.0.0.1:8765';
 
 /**
  * Panel to monitor and control the Background Automation Pipeline.

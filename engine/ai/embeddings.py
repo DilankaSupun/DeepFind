@@ -1,6 +1,6 @@
 import logging
 import threading
-from config import DATA_DIR
+from config import MODEL_DIR
 
 log = logging.getLogger(__name__)
 
@@ -13,11 +13,11 @@ def _get_model():
     global _model
     with _model_lock:
         if _model is None:
-            log.info("Loading semantic embedding model (all-MiniLM-L6-v2) locally...")
+            log.info(f"Loading semantic embedding model from {MODEL_DIR} locally...")
             try:
                 from sentence_transformers import SentenceTransformer
-                # Ensure the model cache runs offline after initial download
-                _model = SentenceTransformer('all-MiniLM-L6-v2', cache_folder=str(DATA_DIR / "models"))
+                # Ensure the model cache runs offline and does not attempt any Hugging Face network lookups
+                _model = SentenceTransformer(str(MODEL_DIR), local_files_only=True)
                 log.info("Semantic model loaded successfully.")
             except ImportError:
                 log.error("sentence-transformers is not installed.")

@@ -9,6 +9,8 @@
     "dev:electron": "electron .",
     "dev": "concurrently -k -n \"Vite,Electron\" -c \"cyan,yellow\" \"npm run dev:frontend\" \"wait-on http://localhost:5173 && npm run dev:electron\"",
     "build": "vite build",
+    "build:backend": "cd ../engine && .venv\\Scripts\\pyinstaller deepfind-engine.spec",
+    "clean:backend": "cd ../engine && rmdir /s /q build dist 2>nul || exit 0",
     "preview": "vite preview",
     "preview:electron": "electron . --no-dev",
     "lint": "eslint frontend/src --ext .js,.jsx --max-warnings 0 || exit 0"

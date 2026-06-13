@@ -22,20 +22,38 @@ Packaging note (Step 21):
   environment variable when launching the bundled engine executable.
 """
 
+import os
+import sys
 from pathlib import Path
 
 # ── Directory layout ───────────────────────────────────────────────────────────
 
+IS_PACKAGED = getattr(sys, 'frozen', False)
+
 # Root of the engine/ directory (where this file lives)
-# Packaging note: This will point INSIDE the frozen bundle in production.
-#                 It is safe for read-only resources (schema.sql, etc.).
 ENGINE_DIR = Path(__file__).parent
 
-# data/ directory: holds the SQLite database and FAISS index
-# Lives at engine/data/ in development.
-# Packaging note: Must be redirected to %APPDATA%\DeepFind\data\ in production.
-#                 This is a WRITABLE user-data path, not a bundled resource.
-DATA_DIR = ENGINE_DIR / "data"
+# Resolving writable user data directory
+if IS_PACKAGED:
+    _appdata = os.environ.get('DEEPFIND_USER_DATA_DIR') or os.path.expanduser('~')
+    USER_DATA_DIR = Path(_appdata)
+    DATA_DIR = USER_DATA_DIR / "data"
+    LOG_DIR = USER_DATA_DIR / "logs"
+else:
+    USER_DATA_DIR = ENGINE_DIR
+    DATA_DIR = ENGINE_DIR / "data"
+    LOG_DIR = DATA_DIR / "logs"
+
+# Ensure directories exist
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+# Resolving the semantic model directory
+_env_model = os.environ.get('DEEPFIND_MODEL_DIR')
+if _env_model:
+    MODEL_DIR = Path(_env_model)
+else:
+    MODEL_DIR = ENGINE_DIR / "bundled_models" / "all-MiniLM-L6-v2"
 
 # SQLite database file
 DB_PATH = DATA_DIR / "deepfind.db"
@@ -46,7 +64,7 @@ FAISS_INDEX_PATH = DATA_DIR / "faiss.index"
 # ── API server ─────────────────────────────────────────────────────────────────
 
 API_HOST = "127.0.0.1"
-API_PORT = 8765
+API_PORT = int(os.environ.get("DEEPFIND_PORT", 8765))
 APP_VERSION = "0.1.0"
 
 # ── Indexing limits (resource-friendly defaults) ───────────────────────────────
@@ -140,4 +158,21 @@ SYSTEM_EXCLUDED_PATHS: list[str] = [
     "C:/System Volume Information",
     "C:/$RECYCLE.BIN",
 ]
+
+if IS_PACKAGED:
+    # Exclude the backend distribution directory (where this file is located)
+    SYSTEM_EXCLUDED_PATHS.append(ENGINE_DIR.as_posix())
+    # Exclude the user data directory where DB/logs reside
+    SYSTEM_EXCLUDED_PATHS.append(USER_DATA_DIR.as_posix())
+else:
+    # In development mode, don't exclude the entire source tree
+    # Instead, exclude specific runtime or generated directories
+    SYSTEM_EXCLUDED_PATHS.extend([
+        DATA_DIR.as_posix(),
+        LOG_DIR.as_posix(),
+        MODEL_DIR.as_posix(),
+        (ENGINE_DIR / ".venv").as_posix(),
+        (ENGINE_DIR / "build").as_posix(),
+        (ENGINE_DIR / "dist").as_posix(),
+    ])
 
