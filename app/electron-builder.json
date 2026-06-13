@@ -1,0 +1,28 @@
+{
+  "productName": "DeepFind",
+  "appId": "com.deepfind.desktop",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist/**/*",
+    "electron/**/*"
+  ],
+  "extraResources": [
+    {
+      "from": "../engine/dist/deepfind-engine",
+      "to": "engine/deepfind-engine",
+      "filter": ["**/*"]
+    }
+  ],
+  "win": {
+    "target": ["nsis", "dir"]
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": false,
+    "deleteAppDataOnUninstall": false,
+    "artifactName": "${productName}-Setup-${version}.${ext}"
+  }
+}

@@ -1,7 +1,10 @@
 {
   "name": "deepfind",
+  "productName": "DeepFind",
+  "appId": "com.deepfind.desktop",
   "version": "0.1.0",
   "description": "Local-first AI file search desktop app",
+  "author": "DeepFind",
   "main": "electron/main.js",
   "private": true,
   "scripts": {
@@ -11,6 +14,10 @@
     "build": "vite build",
     "build:backend": "cd ../engine && .venv\\Scripts\\pyinstaller deepfind-engine.spec",
     "clean:backend": "cd ../engine && rmdir /s /q build dist 2>nul || exit 0",
+    "build:electron": "electron-builder build --config electron-builder.json",
+    "pack:win": "npm run build && electron-builder --dir --config electron-builder.json",
+    "dist:win": "npm run build && electron-builder --win --config electron-builder.json",
+    "clean:dist": "rmdir /s /q dist release 2>nul || exit 0",
     "preview": "vite preview",
     "preview:electron": "electron . --no-dev",
     "lint": "eslint frontend/src --ext .js,.jsx --max-warnings 0 || exit 0"
@@ -23,6 +30,7 @@
     "@vitejs/plugin-react": "^4.3.1",
     "concurrently": "^8.2.2",
     "electron": "^31.7.7",
+    "electron-builder": "^26.15.3",
     "vite": "^5.4.10",
     "wait-on": "^7.2.0"
   }

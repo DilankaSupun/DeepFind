@@ -1,0 +1,3 @@
+SHA256 checksums for DeepFind 0.1.0 release artifacts:
+
+b86b711f95590d19eaac11b80b6d0bc17b6111444704f1468d8b071795eb2982  DeepFind-Setup-0.1.0.exe

@@ -1,0 +1,15 @@
+
+[DeepFind] Launching Backend...
+[DeepFind] Backend failed to start: Error: Backend process exited before becoming ready.
+    at checkHealth (D:\External Works\Portfolio\FileMind\DeepFind\app\release\win-unpacked\resources\app.asar\electron\backend-manager.js:124:26)
+    at D:\External Works\Portfolio\FileMind\DeepFind\app\release\win-unpacked\resources\app.asar\electron\backend-manager.js:162:7
+    at new Promise (<anonymous>)
+    at BackendManager.waitReady (D:\External Works\Portfolio\FileMind\DeepFind\app\release\win-unpacked\resources\app.asar\electron\backend-manager.js:117:12)
+    at startBackend (D:\External Works\Portfolio\FileMind\DeepFind\app\release\win-unpacked\resources\app.asar\electron\main.js:156:32)
+    at WebContents.<anonymous> (D:\External Works\Portfolio\FileMind\DeepFind\app\release\win-unpacked\resources\app.asar\electron\main.js:175:9)
+    at Object.onceWrapper (node:events:634:26)
+    at WebContents.emit (node:events:531:35)
+[BackendManager] Found free port: 8765
+[BackendManager] Launching packaged backend from D:\External Works\Portfolio\FileMind\DeepFind\app\release\win-unpacked\resources\engine\deepfind-engine\deepfind-engine.exe
+[BackendManager] User Data Dir: C:\Users\dilan\AppData\Roaming\DeepFind
+[BackendManager] Backend process exited with code 1 and signal null
