@@ -190,21 +190,37 @@ function SearchResults({
   );
 }
 
+/* ── File Icon SVG helper ────────────────────────────────── */
+function FileIcon({ extRaw, color }) {
+  // A clean, simple file icon
+  return (
+    <div className="file-icon-box" style={{ '--icon-color': color }}>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+      </svg>
+      <span className="file-icon-ext">{extRaw.substring(0, 4)}</span>
+    </div>
+  );
+}
+
 /* ── ResultCard ───────────────────────────────────────────── */
 
 function ResultCard({ file }) {
-  const ext     = (file.extension || '').replace('.', '').toUpperCase() || 'FILE';
-  const extRaw  = (file.extension || '').toLowerCase();
+  const extRaw  = (file.extension || '').toLowerCase().replace('.', '');
   const color   = EXT_COLORS[extRaw] || EXT_COLORS.default;
   const score   = Math.round((file.score || 0) * 100);
-  const reasons = file.matched_reasons || ['Matched'];
   const matchType = file.match_type || 'metadata';
+  
+  // Format Date & Size
+  const sizeKb = Math.round(file.size / 1024);
+  const dateStr = file.modified_at ? new Date(file.modified_at * 1000).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : 'Unknown date';
   
   // Parse tags
   const tagsStr = file.tags || '';
   const tags = tagsStr ? tagsStr.split(',').map(t => t.trim()).filter(Boolean) : [];
-  const displayTags = tags.slice(0, 5);
-  const extraTags = tags.length > 5 ? tags.length - 5 : 0;
+  const displayTags = tags.slice(0, 3);
+  const extraTags = tags.length > 3 ? tags.length - 3 : 0;
 
   const isMissing = file.status === 'missing';
 
@@ -222,110 +238,64 @@ function ResultCard({ file }) {
 
   return (
     <li className={`result-card result-card--${matchType} ${isMissing ? 'result-card--missing' : ''}`} role="listitem">
-
-      {/* Type badge + score */}
-      <div className="result-card__aside">
-        <span className="result-card__ext" style={{ '--ext-color': color }}>
-          {ext.length > 5 ? ext.slice(0, 5) : ext}
-        </span>
-        <span className="result-card__score" title={`Relevance score: ${score}%`}>
-          {score}%
-        </span>
-      </div>
-
-      {/* Main body */}
-      <div className="result-card__body">
-
-        {/* Filename + match type badge */}
-        <div className="result-card__title-row">
+      
+      {/* Top Row: Icon, Filename, Match Badge, Actions */}
+      <div className="result-card__header">
+        <FileIcon extRaw={extRaw} color={color} />
+        
+        <div className="result-card__titles">
           <h3 className="result-card__name" title={file.name}>
             {file.name}
           </h3>
-          {file.match_type === 'exact_name' && <span className="sr-mode-badge sr-mode-badge--metadata">EXACT MATCH</span>}
-          {file.match_type === 'name' && <span className="sr-mode-badge sr-mode-badge--metadata">NAME MATCH</span>}
-          {file.match_type === 'app' && <span className="sr-mode-badge sr-mode-badge--metadata">APP MATCH</span>}
-          {file.match_type === 'folder' && <span className="sr-mode-badge sr-mode-badge--metadata">FOLDER MATCH</span>}
-          {file.match_type === 'path' && <span className="sr-mode-badge sr-mode-badge--metadata">PATH MATCH</span>}
-          {file.match_type === 'tag' && <span className="sr-mode-badge sr-mode-badge--metadata">TAG MATCH</span>}
-          {file.match_type === 'content'  && <span className="sr-mode-badge sr-mode-badge--content">CONTENT MATCH</span>}
-          {file.match_type === 'semantic' && <span className="sr-mode-badge sr-mode-badge--semantic">SEMANTIC MATCH</span>}
-          {file.match_type === 'hybrid'   && <span className="sr-mode-badge sr-mode-badge--hybrid">HYBRID MATCH</span>}
+          <p className="result-card__path" title={file.path}>
+            {file.path}
+          </p>
         </div>
 
-        {/* Path */}
-        <p className="result-card__path" title={file.path}>
-          {file.path}
-        </p>
+        <div className="result-card__badges">
+          {file.match_type === 'exact_name' && <span className="minimal-badge badge-exact">Exact Match</span>}
+          {file.match_type === 'content'    && <span className="minimal-badge badge-content">Content Match</span>}
+          {file.match_type === 'semantic'   && <span className="minimal-badge badge-semantic">Semantic</span>}
+        </div>
 
-        {file.snippet && (
-          <div className="result-card__snippet-wrapper">
-            <span className="result-card__snippet-label">
-              {file.snippet_source === 'semantic_chunk'
-                ? 'Semantic preview'
-                : file.snippet_source === 'path_context'
-                ? 'Location'
-                : 'Content preview'}:
-            </span>
-            <p className={`result-card__snippet ${file.snippet_source === 'path_context' ? 'result-card__snippet--location' : ''}`}>
-              {file.snippet_source === 'path_context'
-                ? file.snippet
-                : renderHighlightedText(file.snippet)}
-            </p>
-          </div>
+        <div className="result-card__actions">
+          <button className="action-icon-btn" onClick={handleOpenFolder} title="Show in folder" aria-label="Show in folder">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            </svg>
+          </button>
+          <button className="action-icon-btn" onClick={handleOpenFile} title="Open file" aria-label="Open file">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Main body (Snippet) */}
+      <div className="result-card__body">
+        {/* Snippet Preview */}
+        {(file.match_type === 'content' || file.match_type === 'semantic' || file.snippet) && (
+          <p className="result-card__snippet" dir="auto">
+            {renderHighlightedText(file.snippet)}
+          </p>
         )}
 
         {/* Tags */}
         {tags.length > 0 && (
           <div className="result-card__tags">
-            {displayTags.map(tag => (
-              <span key={tag} className="result-card__tag">
-                {tag}
-              </span>
-            ))}
-            {extraTags > 0 && (
-              <span className="result-card__tag-more" title={tags.slice(5).join(', ')}>
-                +{extraTags} more
-              </span>
-            )}
+            {displayTags.map(tag => <span key={tag} className="tag-pill">{tag}</span>)}
+            {extraTags > 0 && <span className="tag-pill tag-pill--more">+{extraTags}</span>}
           </div>
         )}
-
-        {/* Meta row */}
-        <div className="result-card__meta">
-          {file.size_human && (
-            <MetaChip icon={<SizeIcon />} label={file.size_human} />
-          )}
-          {file.modified_at && (
-            <MetaChip icon={<CalIcon />} label={formatDate(file.modified_at)} />
-          )}
-          {reasons.map((r, i) => (
-            <span key={i} className="result-card__reason">{r}</span>
-          ))}
-        </div>
       </div>
 
-      {/* Actions */}
-      <div className="result-card__actions">
-        {isMissing && <span className="result-card__missing-badge">File Missing</span>}
-        <button
-          className="result-card__action-btn"
-          disabled={isMissing}
-          title={isMissing ? "File is missing" : "Open File"}
-          aria-label={`Open file ${file.name}`}
-          onClick={handleOpenFile}
-        >
-          <OpenFileIcon />
-          <span>Open</span>
-        </button>
-        <button
-          className="result-card__action-btn"
-          title="Open containing folder"
-          aria-label={`Open folder for ${file.name}`}
-          onClick={handleOpenFolder}
-        >
-          <FolderIcon />
-          <span>Folder</span>
-        </button>
+      {/* Footer Metadata */}
+      <div className="result-card__footer">
+        {sizeKb} KB · {dateStr} · {file.match_type === 'exact_name' ? 'Exact name' : file.match_type === 'content' ? 'Phrase in content' : file.match_type === 'semantic' ? 'Semantic meaning' : 'Name/Path match'}
+        {isMissing && <span className="missing-alert"> · Missing File</span>}
       </div>
 
     </li>

@@ -44,8 +44,8 @@
 }
 
 .btn-warning {
-  background-color: #f59e0b;
-  color: #fff;
+  background-color: var(--status-offline);
+  color: var(--text-primary);
   border: none;
   min-width: 130px;
 }
@@ -55,7 +55,7 @@
 
 .btn-danger {
   background-color: var(--danger);
-  color: #fff;
+  color: var(--text-primary);
   border: none;
   min-width: 130px;
 }

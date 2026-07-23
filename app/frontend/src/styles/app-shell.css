@@ -1,0 +1,262 @@
+/* ============================================================
+   DeepFind — App Shell Layout
+   ============================================================ */
+
+.app-shell {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background-color: var(--df-bg-window);
+  overflow: hidden;
+  color: var(--df-text-primary);
+}
+
+/* ── Navigation Rail ─────────────────────────────────────── */
+.nav-rail {
+  display: flex;
+  flex-direction: column;
+  width: 220px;
+  background-color: var(--df-bg-navigation);
+  border-right: 1px solid var(--df-border-default);
+  transition: width 160ms ease;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.nav-rail--collapsed {
+  width: 64px;
+}
+
+@media (max-width: 1050px) {
+  .nav-rail {
+    width: 64px;
+  }
+}
+
+.nav-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 12px 24px;
+  height: 72px;
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--df-text-primary);
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.nav-wordmark {
+  font-size: 16px;
+  font-weight: 650;
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 160ms ease;
+}
+
+.nav-rail--collapsed .nav-wordmark {
+  display: none;
+}
+@media (max-width: 1050px) {
+  .nav-wordmark {
+    display: none;
+  }
+}
+
+/* Navigation Items */
+.nav-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--df-space-1);
+  padding: 0 8px;
+  flex: 1;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 40px;
+  padding: 0 10px;
+  border-radius: var(--df-radius-control);
+  color: var(--df-text-secondary);
+  font-size: 14px;
+  font-weight: 400;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+  background: transparent;
+  border: none;
+  width: 100%;
+  position: relative;
+  text-align: left;
+}
+
+.nav-item:hover {
+  background-color: var(--df-bg-hover);
+}
+
+.nav-item--active {
+  background-color: var(--df-bg-selected);
+  color: var(--df-text-primary);
+  font-weight: 500;
+}
+
+.nav-item--active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 20px;
+  width: 3px;
+  background-color: var(--df-accent);
+  border-radius: 4px;
+}
+
+.nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.nav-item--active .nav-icon {
+  color: var(--df-accent);
+}
+
+.nav-label {
+  white-space: nowrap;
+}
+
+.nav-rail--collapsed .nav-label {
+  display: none;
+}
+@media (max-width: 1050px) {
+  .nav-label {
+    display: none;
+  }
+}
+
+/* Nav Bottom (Status) */
+.nav-bottom {
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid var(--df-border-subtle);
+}
+
+.nav-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--df-text-secondary);
+  white-space: nowrap;
+  padding: 0 4px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--df-text-tertiary);
+  flex-shrink: 0;
+}
+
+.status-dot--ready {
+  background-color: var(--df-success);
+}
+
+.status-dot--error {
+  background-color: var(--df-danger);
+}
+
+.nav-version {
+  font-size: 11px;
+  color: var(--df-text-disabled);
+  padding: 0 4px;
+  margin-top: 4px;
+}
+
+.nav-rail--collapsed .nav-status-text,
+.nav-rail--collapsed .nav-version {
+  display: none;
+}
+@media (max-width: 1050px) {
+  .nav-status-text, .nav-version {
+    display: none;
+  }
+  .nav-bottom {
+    align-items: center;
+  }
+}
+
+
+/* ── Main Content Area ───────────────────────────────────── */
+.main-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--df-bg-window);
+  min-width: 0; /* Important for flex children to allow text truncation */
+}
+
+.page-header {
+  padding: 32px var(--df-space-6) 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 760px) {
+  .page-header {
+    padding: 24px var(--df-space-4) 16px;
+  }
+}
+
+.page-title {
+  font-size: var(--df-type-page-title);
+  font-weight: 600;
+  color: var(--df-text-primary);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.page-desc {
+  font-size: var(--df-type-body);
+  color: var(--df-text-secondary);
+  margin: 0;
+}
+
+.page-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 var(--df-space-6) var(--df-space-6);
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 760px) {
+  .page-content {
+    padding: 0 var(--df-space-4) var(--df-space-4);
+  }
+}
+
+/* Optional max-width for non-search content */
+.page-content-constrained {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}

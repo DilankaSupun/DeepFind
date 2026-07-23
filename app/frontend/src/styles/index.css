@@ -9,36 +9,34 @@
 /* ── Design Tokens ───────────────────────────────────────── */
 :root {
   /* Background layers */
-  --bg-base:        #0A0B0F;
-  --bg-surface:     #111318;
-  --bg-elevated:    #181B22;
-  --bg-glass:       rgba(255, 255, 255, 0.04);
-  --bg-glass-hover: rgba(255, 255, 255, 0.07);
+  --bg-base:        #0B0D12;
+  --bg-surface:     #10131A;
+  --bg-elevated:    #141821;
+  --bg-hover:       #191E29;
+  --bg-glass:       rgba(255, 255, 255, 0.03);
+  --bg-glass-hover: rgba(255, 255, 255, 0.05);
 
   /* Borders */
-  --border-subtle:  rgba(255, 255, 255, 0.07);
-  --border-medium:  rgba(255, 255, 255, 0.12);
-  --border-focus:   rgba(99, 102, 241, 0.6);
+  --border-subtle:  rgba(255, 255, 255, 0.08);
+  --border-medium:  rgba(255, 255, 255, 0.13);
+  --border-focus:   rgba(124, 111, 246, 0.5);
 
-  /* Accent — Indigo/Purple */
-  --accent-primary:   #6366f1;
-  --accent-secondary: #8b5cf6;
-  --accent-glow:      rgba(99, 102, 241, 0.18);
-  --accent-glow-soft: rgba(99, 102, 241, 0.08);
-  --gradient-primary: linear-gradient(135deg, #6366f1, #8b5cf6);
-  --gradient-text:    linear-gradient(135deg, #a5b4fc, #c4b5fd);
+  /* Accent — Purple */
+  --accent-primary:   #7C6FF6;
+  --accent-hover:     #8C80FF;
+  --accent-subtle:    rgba(124, 111, 246, 0.12);
+  --accent-glow:      rgba(124, 111, 246, 0.15);
 
   /* Text */
-  --text-primary:   #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted:     #475569;
-  --text-accent:    #a5b4fc;
+  --text-primary:   #F4F6FA;
+  --text-secondary: #A4ADBD;
+  --text-muted:     #687386;
 
   /* Status */
-  --status-online:   #22c55e;
-  --status-offline:  #f59e0b;
-  --status-error:    #ef4444;
-  --status-indexing: #3b82f6;
+  --status-online:   #36C98F;
+  --status-offline:  #F3B95F;
+  --status-error:    #F06C75;
+  --status-indexing: #7C6FF6;
 
   /* Spacing */
   --space-xs:  4px;
@@ -49,26 +47,91 @@
   --space-2xl: 64px;
 
   /* Border radius */
-  --radius-sm:   8px;
-  --radius-md:   12px;
-  --radius-lg:   16px;
-  --radius-xl:   24px;
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   14px;
+  --radius-xl:   20px;
   --radius-full: 9999px;
 
   /* Shadows */
-  --shadow-sm:     0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md:     0 4px 20px rgba(0, 0, 0, 0.4);
-  --shadow-lg:     0 8px 40px rgba(0, 0, 0, 0.5);
-  --shadow-accent: 0 0 30px rgba(99, 102, 241, 0.2);
+  --shadow-sm:     0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-md:     0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-lg:     0 8px 24px rgba(0, 0, 0, 0.3);
+  --shadow-accent: 0 0 16px rgba(124, 111, 246, 0.15);
 
   /* Transitions */
-  --transition-fast:   150ms ease;
-  --transition-normal: 250ms ease;
-  --transition-slow:   400ms ease;
+  --transition-fast:   120ms ease;
+  --transition-normal: 180ms ease;
+  --transition-slow:   300ms ease;
 
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+  /* ── Legacy Mappings (Temporarily keeping for existing components) ── */
+  --df-bg-window: var(--bg-base);
+  --df-bg-navigation: var(--bg-surface);
+  --df-bg-surface-1: var(--bg-surface);
+  --df-bg-surface-2: var(--bg-elevated);
+  --df-bg-surface-3: var(--bg-elevated);
+  --df-bg-hover: var(--bg-hover);
+  --df-bg-selected: var(--bg-glass);
+  
+  --df-border-subtle: var(--border-subtle);
+  --df-border-default: var(--border-medium);
+  --df-border-strong: var(--border-focus);
+
+  --df-text-primary: var(--text-primary);
+  --df-text-secondary: var(--text-secondary);
+  --df-text-tertiary: var(--text-muted);
+  --df-text-disabled: var(--text-muted);
+
+  --df-accent: var(--accent-primary);
+  --df-accent-hover: var(--accent-hover);
+  --df-accent-pressed: var(--accent-hover);
+  --df-accent-subtle: var(--accent-subtle);
+  --df-accent-border: var(--border-focus);
+  
+  --df-secondary-accent: var(--accent-primary);
+  --df-secondary-accent-subtle: var(--accent-subtle);
+
+  --df-success: var(--status-online);
+  --df-success-subtle: rgba(54, 201, 143, 0.15);
+  
+  --df-warning: var(--status-offline);
+  --df-warning-subtle: rgba(243, 185, 95, 0.15);
+  
+  --df-danger: var(--status-error);
+  --df-danger-subtle: rgba(240, 108, 117, 0.15);
+  --df-info: var(--accent-primary);
+
+  --df-highlight-bg: rgba(243, 185, 95, 0.20);
+  --df-highlight-text: #F3B95F;
+
+  --df-shadow-flyout: var(--shadow-lg);
+  --df-shadow-dialog: var(--shadow-lg);
+
+  --df-type-display: 38px;
+  --df-type-page-title: 28px;
+  --df-type-section-title: 20px;
+  --df-type-card-title: 15px;
+  --df-type-body: 14px;
+  --df-type-body-small: 13px;
+  --df-type-caption: 12px;
+
+  --df-space-1: 4px;
+  --df-space-2: 8px;
+  --df-space-3: 12px;
+  --df-space-4: 16px;
+  --df-space-5: 20px;
+  --df-space-6: 24px;
+  --df-space-8: 32px;
+  --df-space-10: 40px;
+
+  --df-radius-small: 4px;
+  --df-radius-control: 6px;
+  --df-radius-card: 8px;
+  --df-radius-large: 12px;
 }
 
 /* ── Reset ───────────────────────────────────────────────── */
@@ -92,11 +155,13 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-user-select: none;
   user-select: none; /* Desktop apps don't select text by default */
 }
 
 /* Allow text selection in specific areas */
 input, textarea, .selectable {
+  -webkit-user-select: text;
   user-select: text;
 }
 
@@ -126,13 +191,7 @@ input, textarea, .selectable {
   border-radius: var(--radius-sm);
 }
 
-/* ── Typography Utilities ────────────────────────────────── */
-.text-gradient {
-  background: var(--gradient-text);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
+
 
 /* ── Animations ──────────────────────────────────────────── */
 @keyframes fadeInUp {

@@ -3,51 +3,16 @@
    Main shell, hero, search section, feature cards, footer
    ============================================================ */
 
-/* ── App Shell ───────────────────────────────────────────── */
-.app-shell {
-  height: 100vh;
-  width: 100vw;
-  display: flex;
-  flex-direction: column;
-  background-color: var(--bg-base);
-  position: relative;
-  overflow: hidden;
-}
+/* Removed conflicting .app-shell */
 
-/* ── Background: Dot grid ────────────────────────────────── */
+/* ── Background: Very Subtle Noise ───────────────────────── */
 .bg-grid {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 32px 32px;
   pointer-events: none;
   z-index: 0;
-}
-
-/* ── Ambient Glow Orbs ───────────────────────────────────── */
-.glow-orb {
-  position: absolute;
-  width: 500px;
-  height: 500px;
-  border-radius: 50%;
-  filter: blur(100px);
-  pointer-events: none;
-  z-index: 0;
-  animation: pulse-glow 6s ease-in-out infinite;
-}
-
-.glow-orb--left {
-  top: -150px;
-  left: -150px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.15), transparent 70%);
-  animation-delay: 0s;
-}
-
-.glow-orb--right {
-  bottom: -150px;
-  right: -150px;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.12), transparent 70%);
-  animation-delay: 3s;
 }
 
 /* ── Main Content ────────────────────────────────────────── */
@@ -58,48 +23,88 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;    /* flex-start lets overflow-y:auto scroll correctly */
-  gap: var(--space-lg);           /* 24px — was 40px (space-xl), too tall for one screen */
-  padding: var(--space-xl) var(--space-lg) var(--space-lg);
+  justify-content: flex-start;
+  gap: var(--space-lg);
+  padding: 8vh var(--space-lg) var(--space-lg);
   overflow-y: auto;
   overflow-x: hidden;
+  transition: padding var(--transition-slow);
 }
 
-/* ── Hero: Logo + Title ──────────────────────────────────── */
-.hero-header {
+.app-shell--searching .main-content {
+  padding-top: var(--space-lg);
+  gap: var(--space-md);
+}
+
+/* ── Header ──────────────────────────────────────────────── */
+.app-header {
   display: flex;
   flex-direction: column;
   align-items: center;
+  text-align: center;
+  gap: 16px;
+  margin-bottom: var(--space-md);
+  transition: all var(--transition-slow);
+}
+
+.app-shell--searching .app-header {
+  flex-direction: row;
+  margin-bottom: 0;
   gap: 12px;
-  animation: fadeInUp 0.5s ease 0.1s both;
 }
 
 .logo-mark {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 64px;
-  background: var(--accent-glow-soft);
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-accent);
-  animation: float 4s ease-in-out infinite;
+  width: 48px;
+  height: 48px;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-slow);
+}
+
+.app-shell--searching .logo-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
+
+.header-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.app-shell--searching .header-text {
+  align-items: flex-start;
 }
 
 .app-title {
-  font-size: 52px;
-  font-weight: 800;
-  letter-spacing: -2px;
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: -1px;
   color: var(--text-primary);
   line-height: 1;
+  transition: font-size var(--transition-slow);
+}
+
+.app-shell--searching .app-title {
+  font-size: 20px;
+  letter-spacing: 0;
 }
 
 .app-subtitle {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 400;
   color: var(--text-secondary);
-  letter-spacing: 0.02em;
+  margin-top: 6px;
+  opacity: 1;
+  transition: opacity var(--transition-normal);
 }
 
 /* ── Search Section ──────────────────────────────────────── */
@@ -352,6 +357,7 @@
   padding: 10px 24px;
   border-top: 1px solid var(--border-subtle);
   background: rgba(10, 11, 15, 0.8);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 

@@ -39,7 +39,7 @@
   background: rgba(34,197,94,0.08);
   border: 1px solid rgba(34,197,94,0.2);
   border-radius: var(--radius-full);
-  color: #4ade80;
+  color: var(--status-online);
 }
 
 /* Start button */
@@ -51,7 +51,7 @@
   background: var(--gradient-primary);
   border: none;
   border-radius: var(--radius-lg);
-  color: #fff;
+  color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 12.5px;
   font-weight: 600;
@@ -86,11 +86,11 @@
   background: rgba(239,68,68,0.08);
   border: 1px solid rgba(239,68,68,0.2);
   border-radius: var(--radius-lg);
-  font-size: 12.5px; color: #f87171;
+  font-size: 12.5px; color: var(--status-error);
 }
 .ip-error span { flex: 1; }
 .ip-error button {
-  background: none; border: none; color: #f87171; cursor: pointer;
+  background: none; border: none; color: var(--status-error); cursor: pointer;
   font-size: 16px; opacity: 0.7; transition: opacity var(--transition-fast);
 }
 .ip-error button:hover { opacity: 1; }
@@ -122,13 +122,13 @@
   background: var(--text-muted);
 }
 .ip-status-bar--running  .ip-status-dot { background: var(--accent-primary); animation: pulse-glow 1.2s ease-in-out infinite; }
-.ip-status-bar--completed .ip-status-dot { background: #22c55e; }
-.ip-status-bar--error    .ip-status-dot { background: #ef4444; }
+.ip-status-bar--completed .ip-status-dot { background: var(--status-online); }
+.ip-status-bar--error    .ip-status-dot { background: var(--status-error); }
 
 .ip-status-label { font-weight: 600; color: var(--text-secondary); }
 .ip-status-bar--running   .ip-status-label { color: var(--accent-primary); }
-.ip-status-bar--completed .ip-status-label { color: #4ade80; }
-.ip-status-bar--error     .ip-status-label { color: #f87171; }
+.ip-status-bar--completed .ip-status-label { color: var(--status-online); }
+.ip-status-bar--error     .ip-status-label { color: var(--status-error); }
 
 .ip-current-path {
   flex: 1; font-family: var(--font-mono); font-size: 10.5px;
@@ -155,9 +155,9 @@
 .ip-stat__value { font-size: 18px; font-weight: 700; color: var(--text-primary); }
 .ip-stat__label { font-size: 10px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 
-.ip-stat--green .ip-stat__value { color: #4ade80; }
-.ip-stat--blue  .ip-stat__value { color: #60a5fa; }
-.ip-stat--red   .ip-stat__value { color: #f87171; }
+.ip-stat--green .ip-stat__value { color: var(--status-online); }
+.ip-stat--blue  .ip-stat__value { color: var(--accent-primary); }
+.ip-stat--red   .ip-stat__value { color: var(--status-error); }
 
 /* Summary */
 .ip-summary {
@@ -166,7 +166,7 @@
   background: rgba(34,197,94,0.06);
   border: 1px solid rgba(34,197,94,0.18);
   border-radius: var(--radius-lg);
-  font-size: 12.5px; color: #86efac;
+  font-size: 12.5px; color: var(--status-online);
 }
 
 /* Hint */

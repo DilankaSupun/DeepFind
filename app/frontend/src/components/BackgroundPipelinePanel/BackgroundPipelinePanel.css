@@ -43,8 +43,8 @@
   font-weight: 500;
 }
 
-.text-green { color: #4ade80; }
-.text-gray { color: #9ca3af; }
+.text-green { color: var(--status-online); }
+.text-gray { color: var(--text-muted); }
 .text-highlight { color: var(--accent-primary); font-weight: 600; }
 
 .pipeline-substats {
@@ -64,7 +64,7 @@
 .pipeline-error {
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.2);
-  color: #ef4444;
+  color: var(--status-error);
   padding: 0.75rem;
   border-radius: 4px;
   margin-bottom: 1rem;
@@ -87,10 +87,10 @@
   letter-spacing: 0.5px;
 }
 
-.badge-green { background: rgba(74, 222, 128, 0.2); color: #4ade80; }
+.badge-green { background: rgba(74, 222, 128, 0.2); color: var(--status-online); }
 .badge-yellow { background: rgba(250, 204, 21, 0.2); color: #facc15; }
-.badge-red { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-.badge-gray { background: rgba(156, 163, 175, 0.2); color: #9ca3af; }
+.badge-red { background: rgba(239, 68, 68, 0.2); color: var(--status-error); }
+.badge-gray { background: rgba(156, 163, 175, 0.2); color: var(--text-muted); }
 
 .pipeline-note {
   font-size: 0.85rem;

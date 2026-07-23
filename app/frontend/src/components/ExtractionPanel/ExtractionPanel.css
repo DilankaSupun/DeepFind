@@ -50,13 +50,13 @@
 .ep-badge--green {
   background: rgba(34, 197, 94, 0.08);
   border: 1px solid rgba(34, 197, 94, 0.2);
-  color: #4ade80;
+  color: var(--status-online);
 }
 
 .ep-badge--blue {
   background: rgba(96, 165, 250, 0.08);
   border: 1px solid rgba(96, 165, 250, 0.2);
-  color: #60a5fa;
+  color: var(--accent-primary);
 }
 
 /* ── Start button ────────────────────────────────────────── */
@@ -65,10 +65,10 @@
   align-items: center;
   gap: 6px;
   padding: 7px 16px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  background: var(--bg-surface);
   border: none;
   border-radius: var(--radius-lg);
-  color: #fff;
+  color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 12.5px;
   font-weight: 600;
@@ -108,7 +108,7 @@
   border: 1px solid rgba(239, 68, 68, 0.2);
   border-radius: var(--radius-lg);
   font-size: 12.5px;
-  color: #f87171;
+  color: var(--status-error);
 }
 
 .ep-error span { flex: 1; }
@@ -116,7 +116,7 @@
 .ep-error button {
   background: none;
   border: none;
-  color: #f87171;
+  color: var(--status-error);
   cursor: pointer;
   font-size: 16px;
   opacity: 0.7;
@@ -158,13 +158,13 @@
 }
 
 .ep-status-bar--running   .ep-status-dot { background: var(--accent-primary); animation: pulse-glow 1.2s ease-in-out infinite; }
-.ep-status-bar--completed .ep-status-dot { background: #22c55e; }
-.ep-status-bar--error     .ep-status-dot { background: #ef4444; }
+.ep-status-bar--completed .ep-status-dot { background: var(--status-online); }
+.ep-status-bar--error     .ep-status-dot { background: var(--status-error); }
 
 .ep-status-label { font-weight: 600; color: var(--text-secondary); }
 .ep-status-bar--running   .ep-status-label { color: var(--accent-primary); }
-.ep-status-bar--completed .ep-status-label { color: #4ade80; }
-.ep-status-bar--error     .ep-status-label { color: #f87171; }
+.ep-status-bar--completed .ep-status-label { color: var(--status-online); }
+.ep-status-bar--error     .ep-status-label { color: var(--status-error); }
 
 .ep-current-path {
   flex: 1;
@@ -180,7 +180,7 @@
 .ep-error-detail {
   flex: 1;
   font-size: 11px;
-  color: #f87171;
+  color: var(--status-error);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -211,9 +211,9 @@
 .ep-stat__value { font-size: 18px; font-weight: 700; color: var(--text-primary); }
 .ep-stat__label { font-size: 10px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 
-.ep-stat--green .ep-stat__value { color: #4ade80; }
-.ep-stat--blue  .ep-stat__value { color: #60a5fa; }
-.ep-stat--red   .ep-stat__value { color: #f87171; }
+.ep-stat--green .ep-stat__value { color: var(--status-online); }
+.ep-stat--blue  .ep-stat__value { color: var(--accent-primary); }
+.ep-stat--red   .ep-stat__value { color: var(--status-error); }
 
 /* ── Summary / DB summary ────────────────────────────────── */
 .ep-summary {
@@ -225,7 +225,7 @@
   border: 1px solid rgba(34, 197, 94, 0.18);
   border-radius: var(--radius-lg);
   font-size: 12.5px;
-  color: #86efac;
+  color: var(--status-online);
 }
 
 .ep-db-summary {
@@ -243,7 +243,7 @@
 .ep-db-summary strong { color: var(--text-secondary); }
 
 .ep-pending {
-  color: #fbbf24;
+  color: var(--status-offline);
   font-weight: 600;
 }
 
