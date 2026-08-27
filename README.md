@@ -83,7 +83,7 @@ deepfind/
 ## Development Status
 
 > 🚧 **1st Version Released**
-> 🚧 **Ongoing: Optimizing the sementic search**
+- 🚧 **Ongoing: Optimizing the sementic search**
 
 ---
 
