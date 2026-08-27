@@ -82,7 +82,8 @@ deepfind/
 
 ## Development Status
 
-> 🚧 **In active development — Step 1: Project structure created**
+> 🚧 **1st Version Released**
+> 🚧 **Ongoing: Optimizing the sementic search**
 
 ---
 
